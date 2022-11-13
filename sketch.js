@@ -1,13 +1,13 @@
 const trail = 20;
 const border = 30;
 const steeringCorrection = 3;
-const antCount = 10;
-const foodCount = 50;
+const antCount = 3;
+const foodCount = 100;
 const width = 400;
 const height = 400;
 const visibility = 50;
 const visionAngle = Math.PI / 3;
-const foodRange = 1;
+const foodRange = 5;
 
 const seeCoverage = false;
 const hungry = true;
@@ -121,9 +121,25 @@ class Ant {
         translate(this.mPosition[index].x, this.mPosition[index].y);
         rotate(this.mAngle[index]);
         this.display();
+        if (i == trail - 1 && hungry) {
+          this.drawVisionCone();
+        }
         pop();
       }
     }
+  }
+
+  drawVisionCone() {
+    fill("rgba(255,0,0,0.25)");
+    arc(
+      0,
+      0,
+      visibility,
+      visibility,
+      -visionAngle / 2 - Math.PI / 2,
+      visionAngle / 2 - Math.PI / 2,
+      PIE
+    );
   }
 
   keepInsideBox() {
