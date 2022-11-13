@@ -7,6 +7,7 @@ const width = 400;
 const height = 400;
 const visibility = 50;
 const visionAngle = Math.PI / 3;
+const foodRange = 1;
 
 const seeCoverage = false;
 const hungry = true;
@@ -185,6 +186,12 @@ class Ant {
         }
       }
     } else {
+      let target = this.targetFood.position.copy();
+      this.desiredDirection = target.sub(this.position).normalize();
+      if (this.targetFood.position.dist(this.position) < foodRange) {
+        this.targetFood.eat();
+        this.targetFood = -1;
+      }
     }
   }
 
