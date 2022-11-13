@@ -2,6 +2,8 @@ const trail = 20;
 const border = 30;
 const steeringCorrection = 3;
 const antCount = 10;
+const width = 400;
+const height = 400;
 
 const seeCoverage = false;
 const hungry = true;
@@ -10,7 +12,7 @@ const ants = [];
 const food = [];
 
 function setup() {
-  createCanvas(400, 400);
+  createCanvas(width, height);
   fill(255, 204);
   noStroke();
 
@@ -18,7 +20,9 @@ function setup() {
     ants.push(new Ant(width / 2, height / 2));
   }
 
-  food.push(new Food(width / 2, height / 2));
+  let x = Math.random() * (width - 2 * border) + border;
+  let y = Math.random() * (height - 2 * border) + border;
+  food.push(new Food(x, y));
 
   smooth();
   rectMode(CENTER);
