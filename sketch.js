@@ -18,6 +18,8 @@ function setup() {
     ants.push(new Ant(width / 2, height / 2));
   }
 
+  food.push(new Food(width / 2, height / 2));
+
   smooth();
   rectMode(CENTER);
   frameRate(24);
@@ -27,6 +29,7 @@ function draw() {
   if (!seeCoverage) {
     background(0);
   }
+
   ants.forEach((ant) => {
     ant.update();
     if (seeCoverage) {
@@ -34,6 +37,10 @@ function draw() {
     } else {
       ant.drawAntWithTrail();
     }
+  });
+
+  food.forEach((piece) => {
+    piece.display();
   });
 }
 
@@ -44,7 +51,7 @@ class Food {
 
   display() {
     fill(0, 255, 0);
-    ellipse(x, y, 5, 5);
+    ellipse(this.position.x, this.position.y, 5);
   }
 }
 class Ant {
