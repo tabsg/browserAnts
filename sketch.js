@@ -2,6 +2,7 @@ const trail = 20;
 const border = 30;
 const steeringCorrection = 3;
 const antCount = 10;
+const foodCount = 5;
 const width = 400;
 const height = 400;
 
@@ -20,7 +21,9 @@ function setup() {
     ants.push(new Ant(width / 2, height / 2));
   }
 
-  food.push(new Food());
+  for (let j = 0; j < foodCount; j++) {
+    food.push(new Food());
+  }
 
   smooth();
   rectMode(CENTER);
