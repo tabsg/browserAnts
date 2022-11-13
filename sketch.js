@@ -5,7 +5,7 @@ const antCount = 3;
 const foodCount = 100;
 const width = 400;
 const height = 400;
-const visibility = 50;
+const visibility = 100;
 const visionAngle = Math.PI / 3;
 const foodRange = 5;
 
@@ -77,9 +77,9 @@ class Ant {
   constructor(x, y) {
     this.deltaTime = 1;
 
-    this.maxSpeed = 10;
-    this.steerStrength = 1;
-    this.wanderStrength = 0.1;
+    this.maxSpeed = 5;
+    this.steerStrength = 0.5;
+    this.wanderStrength = 0.01;
 
     this.angle = 0;
     this.position = new p5.Vector(x, y);
@@ -122,6 +122,7 @@ class Ant {
         rotate(this.mAngle[index]);
         this.display();
         if (i == trail - 1 && hungry) {
+          this.drawVisibilityArc();
           this.drawVisionCone();
         }
         pop();
@@ -138,6 +139,19 @@ class Ant {
       visibility,
       -visionAngle / 2 - Math.PI / 2,
       visionAngle / 2 - Math.PI / 2,
+      PIE
+    );
+  }
+
+  drawVisibilityArc() {
+    fill("rgba(0,0,255,0.15)");
+    arc(
+      0,
+      0,
+      visibility,
+      visibility,
+      visionAngle / 2 - Math.PI / 2,
+      -visionAngle / 2 - Math.PI / 2,
       PIE
     );
   }
