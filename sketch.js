@@ -6,7 +6,6 @@ const antCount = 10;
 const seeCoverage = false;
 
 class Ant {
-
   constructor(x, y) {
     this.deltaTime = 1;
 
@@ -45,10 +44,9 @@ class Ant {
     this.mAngle[frame] = this.angle;
 
     for (let i = 0; i < trail; i++) {
-
-      let colour = 255 * i / trail
-      fill(colour)
-      stroke(colour)
+      let colour = (255 * i) / trail;
+      fill(colour);
+      stroke(colour);
 
       let index = (frame + 1 + i) % trail;
       if (this.mPosition[index] != null) {
@@ -58,42 +56,64 @@ class Ant {
         this.display();
         pop();
       }
-
     }
   }
 
-  update() {
-    let wanderDirection = p5.Vector.random2D();
-    this.desiredDirection = (wanderDirection.add(this.desiredDirection).mult(this.wanderStrength)).normalize();
-    let desiredVelocity = this.desiredDirection.mult(this.maxSpeed);
-    let desiredSteeringForce = (desiredVelocity.sub(this.velocity)).mult(this.steerStrength);
-    let acceleration = desiredSteeringForce.limit(this.steerStrength);
-
+  keepInsideBox() {
     let pos = this.position;
 
     if (pos.x < border) {
-      this.position.x = border
+      this.position.x = border;
       this.velocity.x += steeringCorrection;
     }
-    if (pos.x > (width - border)) {
-      this.position.x = width - border
+    if (pos.x > width - border) {
+      this.position.x = width - border;
       this.velocity.x -= steeringCorrection;
     }
     if (pos.y < border) {
-      this.position.y = border
+      this.position.y = border;
       this.velocity.y += steeringCorrection;
     }
-    if (pos.y > (height - border)) {
-      this.position.y = height - border
+    if (pos.y > height - border) {
+      this.position.y = height - border;
       this.velocity.y -= steeringCorrection;
     }
+  }
 
-    this.velocity = (this.velocity.add(acceleration.mult(this.deltaTime))).limit(this.maxSpeed);
+  wander() {
+    this.desiredDirection = p5.Vector.random2D()
+      .add(this.desiredDirection)
+      .mult(this.wanderStrength)
+      .normalize();
+  }
+
+  getAcceleration() {
+    let desiredVelocity = this.desiredDirection.mult(this.maxSpeed);
+    let desiredSteeringForce = desiredVelocity
+      .sub(this.velocity)
+      .mult(this.steerStrength);
+    return desiredSteeringForce.limit(this.steerStrength);
+  }
+
+  updatePosition(acceleration) {
+    this.velocity = this.velocity
+      .add(acceleration.mult(this.deltaTime))
+      .limit(this.maxSpeed);
+
     this.position = this.position.add(this.velocity.mult(this.deltaTime));
-    this.position = new p5.Vector((this.position.x + width) % width, (this.position.y + height) % height);
-
+    this.position = new p5.Vector(
+      (this.position.x + width) % width,
+      (this.position.y + height) % height
+    );
 
     this.angle = Math.atan2(this.velocity.y, this.velocity.x) + Math.PI / 2;
+  }
+
+  update() {
+    this.wander();
+    let acceleration = this.getAcceleration();
+    this.keepInsideBox();
+    this.updatePosition(acceleration);
   }
 }
 
@@ -105,6 +125,7 @@ function setup() {
   for (let i = 0; i < antCount; i++) {
     ants.push(new Ant(width / 2, height / 2));
   }
+
   smooth();
   rectMode(CENTER);
   frameRate(24);
@@ -114,14 +135,12 @@ function draw() {
   if (!seeCoverage) {
     background(0);
   }
-  ants.forEach(ant => {
+  ants.forEach((ant) => {
     ant.update();
-    if (seeCoverage) { ant.drawAnt(); }
-    else {
-
+    if (seeCoverage) {
+      ant.drawAnt();
+    } else {
       ant.drawAntWithTrail();
     }
   });
 }
-
-
