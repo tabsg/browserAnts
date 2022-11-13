@@ -1,8 +1,9 @@
-const trail = 40;
+const trail = 20;
 const border = 30;
 const steeringCorrection = 3;
 const ants = [];
-const antCount = 3;
+const antCount = 10;
+const seeCoverage = true;
 
 class Ant {
 
@@ -24,8 +25,18 @@ class Ant {
     this.targetFood = [];
   }
 
-  display(age) {
+  display() {
     rect(0, 0, 10, 20);
+  }
+
+  drawAnt() {
+    fill(255);
+    stroke(255);
+    push();
+    translate(this.position.x, this.position.y);
+    rotate(this.angle);
+    this.display();
+    pop();
   }
 
   drawAntWithTrail() {
@@ -44,7 +55,7 @@ class Ant {
         push();
         translate(this.mPosition[index].x, this.mPosition[index].y);
         rotate(this.mAngle[index]);
-        this.display(i);
+        this.display();
         pop();
       }
 
@@ -100,10 +111,14 @@ function setup() {
 }
 
 function draw() {
-  background(0);
+
   ants.forEach(ant => {
     ant.update();
-    ant.drawAntWithTrail();
+    if (seeCoverage) { ant.drawAnt(); }
+    else {
+      background(0);
+      ant.drawAntWithTrail();
+    }
   });
 }
 
