@@ -10,7 +10,7 @@ const seeCoverage = false;
 const hungry = true;
 
 const ants = [];
-const food = [];
+const food = new Set();
 
 function setup() {
   createCanvas(width, height);
@@ -22,7 +22,7 @@ function setup() {
   }
 
   for (let j = 0; j < foodCount; j++) {
-    food.push(new Food());
+    food.add(new Food());
   }
 
   smooth();
