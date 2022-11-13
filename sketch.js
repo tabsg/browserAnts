@@ -1,10 +1,52 @@
 const trail = 20;
 const border = 30;
 const steeringCorrection = 3;
-const ants = [];
 const antCount = 10;
-const seeCoverage = false;
 
+const seeCoverage = false;
+const hungry = true;
+
+const ants = [];
+const food = [];
+
+function setup() {
+  createCanvas(400, 400);
+  fill(255, 204);
+  noStroke();
+
+  for (let i = 0; i < antCount; i++) {
+    ants.push(new Ant(width / 2, height / 2));
+  }
+
+  smooth();
+  rectMode(CENTER);
+  frameRate(24);
+}
+
+function draw() {
+  if (!seeCoverage) {
+    background(0);
+  }
+  ants.forEach((ant) => {
+    ant.update();
+    if (seeCoverage) {
+      ant.drawAnt();
+    } else {
+      ant.drawAntWithTrail();
+    }
+  });
+}
+
+class Food {
+  constructor(x, y) {
+    this.position = new p5.Vector(x, y);
+  }
+
+  display() {
+    fill(0, 255, 0);
+    ellipse(x, y, 5, 5);
+  }
+}
 class Ant {
   constructor(x, y) {
     this.deltaTime = 1;
@@ -44,9 +86,8 @@ class Ant {
     this.mAngle[frame] = this.angle;
 
     for (let i = 0; i < trail; i++) {
-      let colour = (255 * i) / trail;
-      fill(colour);
-      stroke(colour);
+      let alpha = ((i + 1) / trail) ** 2;
+      fill("rgba(255,255,255," + alpha + ")");
 
       let index = (frame + 1 + i) % trail;
       if (this.mPosition[index] != null) {
@@ -115,32 +156,4 @@ class Ant {
     this.keepInsideBox();
     this.updatePosition(acceleration);
   }
-}
-
-function setup() {
-  createCanvas(400, 400);
-  fill(255, 204);
-  noStroke();
-
-  for (let i = 0; i < antCount; i++) {
-    ants.push(new Ant(width / 2, height / 2));
-  }
-
-  smooth();
-  rectMode(CENTER);
-  frameRate(24);
-}
-
-function draw() {
-  if (!seeCoverage) {
-    background(0);
-  }
-  ants.forEach((ant) => {
-    ant.update();
-    if (seeCoverage) {
-      ant.drawAnt();
-    } else {
-      ant.drawAntWithTrail();
-    }
-  });
 }
