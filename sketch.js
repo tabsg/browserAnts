@@ -5,6 +5,7 @@ const antCount = 10;
 const foodCount = 5;
 const width = 400;
 const height = 400;
+const visibility = 50;
 
 const seeCoverage = false;
 const hungry = true;
@@ -54,11 +55,20 @@ class Food {
     let x = Math.random() * (width - 2 * border) + border;
     let y = Math.random() * (height - 2 * border) + border;
     this.position = new p5.Vector(x, y);
+
+    this.eaten = false;
   }
 
   display() {
-    fill(0, 255, 0);
-    ellipse(this.position.x, this.position.y, 5);
+    if (!this.eaten) {
+      fill(0, 255, 0);
+      ellipse(this.position.x, this.position.y, 5);
+    }
+  }
+
+  eat() {
+    this.eaten = true;
+    food.delete(this);
   }
 }
 class Ant {
@@ -77,7 +87,7 @@ class Ant {
     this.mPosition = [];
     this.mAngle = [];
 
-    this.targetFood = [];
+    this.targetFood = -1;
   }
 
   display() {
@@ -142,6 +152,18 @@ class Ant {
       .normalize();
   }
 
+  beHungry() {
+    if (this.targetFood === -1) {
+      let closeFood = [];
+      food.forEach((piece) => {
+        if (this.position.dist(piece.position) < visibility) {
+          closeFood.push(piece);
+        }
+      });
+    } else {
+    }
+  }
+
   getAcceleration() {
     let desiredVelocity = this.desiredDirection.mult(this.maxSpeed);
     let desiredSteeringForce = desiredVelocity
@@ -166,6 +188,9 @@ class Ant {
 
   update() {
     this.wander();
+    if (hungry) {
+      this.beHungry();
+    }
     let acceleration = this.getAcceleration();
     this.keepInsideBox();
     this.updatePosition(acceleration);
