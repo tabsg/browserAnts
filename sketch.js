@@ -3,7 +3,7 @@ const border = 30;
 const steeringCorrection = 3;
 const ants = [];
 const antCount = 10;
-const seeCoverage = true;
+const seeCoverage = false;
 
 class Ant {
 
@@ -111,12 +111,14 @@ function setup() {
 }
 
 function draw() {
-
+  if (!seeCoverage) {
+    background(0);
+  }
   ants.forEach(ant => {
     ant.update();
     if (seeCoverage) { ant.drawAnt(); }
     else {
-      background(0);
+
       ant.drawAntWithTrail();
     }
   });
