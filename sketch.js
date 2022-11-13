@@ -152,14 +152,25 @@ class Ant {
       .normalize();
   }
 
+  findCloseFood() {
+    let closeFood = [];
+    food.forEach((piece) => {
+      if (this.position.dist(piece.position) < visibility) {
+        closeFood.push(piece);
+      }
+    });
+    return closeFood;
+  }
+
+  pickRandomFood(food) {
+    let index = Math.floor(Math.random() * food.length);
+    return food[index];
+  }
+
   beHungry() {
     if (this.targetFood === -1) {
-      let closeFood = [];
-      food.forEach((piece) => {
-        if (this.position.dist(piece.position) < visibility) {
-          closeFood.push(piece);
-        }
-      });
+      let closeFood = this.findCloseFood();
+      let chosenPiece = this.pickRandomFood(closeFood);
     } else {
     }
   }
