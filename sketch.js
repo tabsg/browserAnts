@@ -20,9 +20,7 @@ function setup() {
     ants.push(new Ant(width / 2, height / 2));
   }
 
-  let x = Math.random() * (width - 2 * border) + border;
-  let y = Math.random() * (height - 2 * border) + border;
-  food.push(new Food(x, y));
+  food.push(new Food());
 
   smooth();
   rectMode(CENTER);
@@ -49,7 +47,9 @@ function draw() {
 }
 
 class Food {
-  constructor(x, y) {
+  constructor() {
+    let x = Math.random() * (width - 2 * border) + border;
+    let y = Math.random() * (height - 2 * border) + border;
     this.position = new p5.Vector(x, y);
   }
 
