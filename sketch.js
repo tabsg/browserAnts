@@ -2,7 +2,7 @@ const trail = 20;
 const border = 30;
 const steeringCorrection = 3;
 const antCount = 10;
-const foodCount = 5;
+const foodCount = 50;
 const width = 400;
 const height = 400;
 const visibility = 50;
@@ -186,10 +186,14 @@ class Ant {
         }
       }
     } else {
-      let target = this.targetFood.position.copy();
-      this.desiredDirection = target.sub(this.position).normalize();
-      if (this.targetFood.position.dist(this.position) < foodRange) {
-        this.targetFood.eat();
+      if (food.has(this.targetFood)) {
+        let target = this.targetFood.position.copy();
+        this.desiredDirection = target.sub(this.position).normalize();
+        if (this.targetFood.position.dist(this.position) < foodRange) {
+          this.targetFood.eat();
+          this.targetFood = -1;
+        }
+      } else {
         this.targetFood = -1;
       }
     }
