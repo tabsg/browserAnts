@@ -6,6 +6,7 @@ const foodCount = 5;
 const width = 400;
 const height = 400;
 const visibility = 50;
+const visionAngle = Math.PI / 3;
 
 const seeCoverage = false;
 const hungry = true;
@@ -162,15 +163,27 @@ class Ant {
     return closeFood;
   }
 
-  pickRandomFood(food) {
+  pickRandomPiece(food) {
     let index = Math.floor(Math.random() * food.length);
     return food[index];
+  }
+
+  getAngleToPiece(piece) {
+    let location = new p5.Vector(piece.position.x, piece.position.y);
+    let foodDirection = location.sub(this.position);
+    return Math.abs(this.velocity.angleBetween(foodDirection));
   }
 
   beHungry() {
     if (this.targetFood === -1) {
       let closeFood = this.findCloseFood();
-      let chosenPiece = this.pickRandomFood(closeFood);
+      if (closeFood.length > 0) {
+        let chosenPiece = this.pickRandomPiece(closeFood);
+        let angleFromVelocity = this.getAngleToPiece(chosenPiece);
+        if (angleFromVelocity < visionAngle) {
+          this.targetFood = chosenPiece;
+        }
+      }
     } else {
     }
   }
