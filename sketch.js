@@ -1,22 +1,32 @@
 const trail = 20;
 const border = 30;
 const steeringCorrection = 3;
-const antCount = 3;
-const foodCount = 100;
-const width = 400;
-const height = 400;
+const antCount = 5;
 const visibility = 100;
 const visionAngle = Math.PI / 3;
+
+const foodCount = 50;
+var eatenFood = 0;
 const foodRange = 5;
-
-const seeCoverage = false;
-const hungry = true;
-
 const ants = [];
 const food = new Set();
 
+const width = 400;
+const height = 400;
+
+const graphHeight = 100;
+var graph = null;
+
+const seeCoverage = false;
+const hungry = true;
+const showGraph = true;
+
 function setup() {
-  createCanvas(width, height);
+  if (!showGraph) {
+    createCanvas(width, height);
+  } else {
+    createCanvas(width, height + graphHeight);
+  }
   fill(255, 204);
   noStroke();
 
@@ -27,6 +37,8 @@ function setup() {
   for (let j = 0; j < foodCount; j++) {
     food.add(new Food());
   }
+
+  graph = new Graph();
 
   smooth();
   rectMode(CENTER);
@@ -50,6 +62,36 @@ function draw() {
   food.forEach((piece) => {
     piece.display();
   });
+
+  if (showGraph) {
+    graph.display();
+  }
+}
+
+class Graph {
+  constructor() {
+    this.frameValues = [];
+  }
+
+  displayBar(x1, y1, x2, y2) {
+    rect(x1, y1, x2, y2);
+  }
+
+  display() {
+    rectMode(CORNERS);
+    fill(0, 255, 0);
+    let graphWidth = min(width, frameCount);
+    this.frameValues.push((graphHeight * eatenFood) / foodCount);
+    for (let frame = 0; frame < graphWidth; frame++) {
+      print(frame);
+      this.displayBar(
+        frame - 1,
+        height + graphHeight,
+        frame,
+        height + graphHeight - this.frameValues[frame]
+      );
+    }
+  }
 }
 
 class Food {
@@ -63,6 +105,7 @@ class Food {
 
   display() {
     if (!this.eaten) {
+      noStroke();
       fill(0, 255, 0);
       ellipse(this.position.x, this.position.y, 5);
     }
@@ -70,6 +113,7 @@ class Food {
 
   eat() {
     this.eaten = true;
+    eatenFood++;
     food.delete(this);
   }
 }
@@ -93,6 +137,7 @@ class Ant {
   }
 
   display() {
+    rectMode(CENTER);
     rect(0, 0, 10, 20);
   }
 
@@ -112,7 +157,7 @@ class Ant {
     this.mAngle[frame] = this.angle;
 
     for (let i = 0; i < trail; i++) {
-      let alpha = ((i + 1) / trail) ** 2;
+      let alpha = Math.pow((i + 1) / trail, 2);
       fill("rgba(255,255,255," + alpha + ")");
 
       let index = (frame + 1 + i) % trail;
