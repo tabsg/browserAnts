@@ -11,7 +11,7 @@ const foodRange = 5;
 const ants = [];
 const food = new Set();
 
-const width = 400;
+const width = 600;
 const height = 400;
 
 const graphHeight = 100;
@@ -74,16 +74,18 @@ class Graph {
   }
 
   displayBar(x1, y1, x2, y2) {
+    fill(0, 255, 0);
+    rect(x1, y2, x2, height);
+    fill(100, 22, 100);
     rect(x1, y1, x2, y2);
   }
 
   display() {
     rectMode(CORNERS);
-    fill(0, 255, 0);
+
     let graphWidth = min(width, frameCount);
     this.frameValues.push((graphHeight * eatenFood) / foodCount);
     for (let frame = 0; frame < graphWidth; frame++) {
-      print(frame);
       this.displayBar(
         frame - 1,
         height + graphHeight,
