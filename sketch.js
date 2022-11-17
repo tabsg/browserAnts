@@ -194,6 +194,18 @@ class Ant {
     return closeFood;
   }
 
+  pickClosestPiece(closeFood) {
+    let closestPiece = closeFood[0];
+    let minDistance = this.position.dist(closestPiece.position);
+    food.forEach((piece) => {
+      if (this.position.dist(piece.position) < minDistance) {
+        closestPiece = piece;
+        minDistance = this.position.dist(closestPiece.position);
+      }
+    });
+    return closestPiece;
+  }
+
   pickRandomPiece(food) {
     let index = Math.floor(Math.random() * food.length);
     return food[index];
@@ -209,7 +221,7 @@ class Ant {
     if (this.targetFood === -1) {
       let closeFood = this.findCloseFood();
       if (closeFood.length > 0) {
-        let chosenPiece = this.pickRandomPiece(closeFood);
+        let chosenPiece = this.pickClosestPiece(closeFood);
         let angleFromVelocity = this.getAngleToPiece(chosenPiece);
         if (angleFromVelocity < visionAngle) {
           this.targetFood = chosenPiece;
