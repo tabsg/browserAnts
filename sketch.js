@@ -5,13 +5,16 @@ const antCount = 5;
 const visibility = 100;
 const visionAngle = Math.PI / 3;
 
-const foodCount = 50;
+const foodCentres = 5;
+const foodPerCentre = 25;
+const foodCount = foodCentres * foodPerCentre;
+const foodSpread = 75;
 var eatenFood = 0;
 const foodRange = 5;
 const ants = [];
 const food = new Set();
 
-const width = 600;
+const width = 400;
 const height = 400;
 
 const graphHeight = 100;
@@ -34,8 +37,13 @@ function setup() {
     ants.push(new Ant(width / 2, height / 2));
   }
 
-  for (let j = 0; j < foodCount; j++) {
-    food.add(new Food());
+  for (let j = 0; j < foodCentres; j++) {
+    let x = Math.random() * (width - 2 * border) + border;
+    let y = Math.random() * (height - 2 * border) + border;
+    let centre = new p5.Vector(x, y);
+    for (let k = 0; k < foodPerCentre; k++) {
+      food.add(new Food(centre));
+    }
   }
 
   graph = new Graph();
@@ -97,12 +105,32 @@ class Graph {
 }
 
 class Food {
-  constructor() {
-    let x = Math.random() * (width - 2 * border) + border;
-    let y = Math.random() * (height - 2 * border) + border;
-    this.position = new p5.Vector(x, y);
+  constructor(centre) {
+    let directionFromCentre = p5.Vector.random2D();
+    let vectorFromCentre = directionFromCentre.setMag(
+      Math.random() * foodSpread
+    );
+    let centrePosition = centre.copy();
+    this.position = centrePosition.add(vectorFromCentre);
+    this.keepFoodInBounds(centre, vectorFromCentre);
 
     this.eaten = false;
+  }
+
+  keepFoodInBounds(centre, vectorFromCentre) {
+    let x = this.position.x;
+    let y = this.position.y;
+
+    let dx = vectorFromCentre.x;
+    let dy = vectorFromCentre.y;
+
+    if (x < border || x > width - border) {
+      dx = -dx;
+    }
+    if (y < border || y > height - border) {
+      dy = -dy;
+    }
+    this.position = new p5.Vector(centre.x + dx, centre.y + dy);
   }
 
   display() {
@@ -251,11 +279,6 @@ class Ant {
       }
     });
     return closestPiece;
-  }
-
-  pickRandomPiece(food) {
-    let index = Math.floor(Math.random() * food.length);
-    return food[index];
   }
 
   getAngleToPiece(piece) {
