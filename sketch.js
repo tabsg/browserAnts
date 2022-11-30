@@ -1,8 +1,8 @@
 const trail = 20;
 const border = 30;
 const steeringCorrection = 3;
-const antCount = 50;
-const visibility = 100;
+var antCount = 50;
+var visibility = 100;
 const visionAngle = Math.PI / 3;
 
 var home = null;
@@ -22,17 +22,20 @@ const height = 400;
 const graphHeight = 100;
 var graph = null;
 
-const seeCoverage = false;
-const hungry = true;
+var seeCoverage = false;
+var hungry = true;
 const showGraph = true;
-const showVision = false;
+var showVision = false;
+
+const buttons = [];
+
+function preload() {
+  collectSound = loadSound("assets/collect.mp3");
+  returnSound = loadSound("assets/return.mp3");
+}
 
 function setup() {
-  if (!showGraph) {
-    createCanvas(width, height);
-  } else {
-    createCanvas(width, height + graphHeight);
-  }
+  createCanvas(width + 1.5 * graphHeight, height + graphHeight);
   fill(223, 243, 228);
 
   home = new Home();
@@ -56,13 +59,74 @@ function setup() {
   smooth();
   rectMode(CENTER);
   frameRate(24);
-  collectSound = loadSound("assets/collect.mp3");
-  returnSound = loadSound("assets/return.mp3");
+
+  createButtons();
+}
+
+function createButtons() {
+  let buttonNames = [
+    "show vision",
+    "see coverage",
+    "be hungry",
+    "add ant",
+    "remove ant",
+    "increase visibility",
+    "decrease visibility",
+  ];
+  let buttonFunctions = [
+    toggleShowVision,
+    toggleSeeCoverage,
+    toggleBeHungry,
+    addAnt,
+    removeAnt,
+    increaseVisibility,
+    decreaseVisibility,
+  ];
+  for (let i = 0; i < buttonNames.length; i++) {
+    let buttonName = buttonNames[i];
+    let button = createButton(buttonName);
+    button.position(width, 60 * i);
+    button.mousePressed(buttonFunctions[i]);
+    buttons.push[i];
+  }
+}
+
+function toggleShowVision() {
+  showVision = !showVision;
+}
+
+function toggleSeeCoverage() {
+  seeCoverage = !seeCoverage;
+}
+
+function toggleBeHungry() {
+  hungry = !hungry;
+}
+
+function addAnt() {
+  ants.push(new Ant(home.location.x, home.location.y));
+  antCount++;
+}
+
+function removeAnt() {
+  ants.splice(0, 1);
+  antCount--;
+}
+
+function increaseVisibility() {
+  visibility += 10;
+}
+
+function decreaseVisibility() {
+  visibility -= 10;
 }
 
 function draw() {
   if (!seeCoverage) {
-    background(223, 243, 228);
+    background(108, 75, 94);
+    fill(223, 243, 228);
+    rectMode(CORNERS);
+    rect(0, 0, width, height);
   }
 
   ants.forEach((ant) => {
@@ -114,8 +178,8 @@ class Graph {
   }
 
   displayBar(x1, y1, x2, y2) {
-    //fill(89, 149, 237);
-    //rect(x1, y2, x2, height);
+    // fill(108, 75, 94);
+    // rect(x1, y2, x2, height);
     fill(232, 126, 161);
     rect(x1, y1, x2, y2);
   }
@@ -353,6 +417,18 @@ class Ant {
       }
     }
   }
+
+  // sensePheromones() {
+  //   this.updateSensor(leftSensor);
+  //   this.updateSensor(centreSensor);
+  //   this.updateSensor(rightSensor);
+
+  //   if (centreSensor.value > Math.max(leftSensor.value, rightSensor.value)) {
+  //     this.desiredDirection = this.velocity;
+  //   } else if (leftSensor.value > rightSensor.value) {
+  //     this.desiredDirection.sub();
+  //   }
+  // }
 
   getAcceleration() {
     let desiredVelocity = this.desiredDirection.mult(this.maxSpeed);
