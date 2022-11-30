@@ -1,14 +1,14 @@
 const trail = 20;
 const border = 30;
 const steeringCorrection = 3;
-const antCount = 5;
+const antCount = 50;
 const visibility = 100;
 const visionAngle = Math.PI / 3;
 
 var home = null;
 
 const foodCentres = 5;
-const foodPerCentre = 25;
+const foodPerCentre = 50;
 const foodCount = foodCentres * foodPerCentre;
 const foodSpread = 75;
 var eatenFood = 0;
@@ -25,7 +25,7 @@ var graph = null;
 const seeCoverage = false;
 const hungry = true;
 const showGraph = true;
-const showVision = true;
+const showVision = false;
 
 function setup() {
   if (!showGraph) {
@@ -56,14 +56,14 @@ function setup() {
   smooth();
   rectMode(CENTER);
   frameRate(24);
+  collectSound = loadSound("assets/collect.mp3");
+  returnSound = loadSound("assets/return.mp3");
 }
 
 function draw() {
   if (!seeCoverage) {
     background(223, 243, 228);
   }
-
-  home.display();
 
   ants.forEach((ant) => {
     ant.update();
@@ -81,6 +81,8 @@ function draw() {
   if (showGraph) {
     graph.display();
   }
+
+  home.display();
 }
 
 class Home {
@@ -95,6 +97,14 @@ class Home {
     noStroke();
     fill(89, 149, 237);
     ellipse(this.location.x, this.location.y, 50);
+    fill(0, 0, 0);
+    textFont("Arial Black");
+    text(this.foodCollected, this.location.x - 4, this.location.y + 4);
+  }
+
+  receiveFood() {
+    this.foodCollected++;
+    returnSound.play();
   }
 }
 
@@ -167,6 +177,7 @@ class Food {
     this.eaten = true;
     eatenFood++;
     food.delete(this);
+    collectSound.play();
   }
 }
 class Ant {
@@ -186,6 +197,7 @@ class Ant {
     this.mAngle = [];
 
     this.targetFood = -1;
+    this.goingHome = false;
   }
 
   display() {
@@ -310,7 +322,15 @@ class Ant {
   }
 
   beHungry() {
-    if (this.targetFood === -1) {
+    if (this.goingHome) {
+      let target = home.location.copy();
+      this.desiredDirection = target.sub(this.position).normalize();
+      if (home.location.dist(this.position) < foodRange) {
+        home.receiveFood();
+        this.goingHome = false;
+        this.targetFood = -1;
+      }
+    } else if (this.targetFood === -1) {
       let closeFood = this.findCloseFood();
       if (closeFood.length > 0) {
         let chosenPiece = this.pickClosestPiece(closeFood);
@@ -326,6 +346,7 @@ class Ant {
         if (this.targetFood.position.dist(this.position) < foodRange) {
           this.targetFood.eat();
           this.targetFood = -1;
+          this.goingHome = true;
         }
       } else {
         this.targetFood = -1;
