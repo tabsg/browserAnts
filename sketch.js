@@ -5,6 +5,8 @@ const antCount = 5;
 const visibility = 100;
 const visionAngle = Math.PI / 3;
 
+var home = null;
+
 const foodCentres = 5;
 const foodPerCentre = 25;
 const foodCount = foodCentres * foodPerCentre;
@@ -23,6 +25,7 @@ var graph = null;
 const seeCoverage = false;
 const hungry = true;
 const showGraph = true;
+const showVision = true;
 
 function setup() {
   if (!showGraph) {
@@ -30,11 +33,13 @@ function setup() {
   } else {
     createCanvas(width, height + graphHeight);
   }
-  fill(255, 204);
+  fill(223, 243, 228);
+
+  home = new Home();
   noStroke();
 
   for (let i = 0; i < antCount; i++) {
-    ants.push(new Ant(width / 2, height / 2));
+    ants.push(new Ant(home.location.x, home.location.y));
   }
 
   for (let j = 0; j < foodCentres; j++) {
@@ -55,8 +60,10 @@ function setup() {
 
 function draw() {
   if (!seeCoverage) {
-    background(0);
+    background(223, 243, 228);
   }
+
+  home.display();
 
   ants.forEach((ant) => {
     ant.update();
@@ -76,15 +83,30 @@ function draw() {
   }
 }
 
+class Home {
+  constructor() {
+    let x = Math.random() * (width - 2 * border) + border;
+    let y = Math.random() * (height - 2 * border) + border;
+    this.location = new p5.Vector(x, y);
+    this.foodCollected = 0;
+  }
+
+  display() {
+    noStroke();
+    fill(89, 149, 237);
+    ellipse(this.location.x, this.location.y, 50);
+  }
+}
+
 class Graph {
   constructor() {
     this.frameValues = [];
   }
 
   displayBar(x1, y1, x2, y2) {
-    fill(0, 255, 0);
-    rect(x1, y2, x2, height);
-    fill(100, 22, 100);
+    //fill(89, 149, 237);
+    //rect(x1, y2, x2, height);
+    fill(232, 126, 161);
     rect(x1, y1, x2, y2);
   }
 
@@ -93,7 +115,7 @@ class Graph {
 
     let graphWidth = min(width, frameCount);
     this.frameValues.push((graphHeight * eatenFood) / foodCount);
-    for (let frame = 0; frame < graphWidth; frame++) {
+    for (let frame = 0; frame <= graphWidth; frame++) {
       this.displayBar(
         frame - 1,
         height + graphHeight,
@@ -136,7 +158,7 @@ class Food {
   display() {
     if (!this.eaten) {
       noStroke();
-      fill(0, 255, 0);
+      fill(232, 126, 161);
       ellipse(this.position.x, this.position.y, 5);
     }
   }
@@ -168,12 +190,12 @@ class Ant {
 
   display() {
     rectMode(CENTER);
-    rect(0, 0, 10, 20);
+    rect(0, 0, 5, 10);
   }
 
   drawAnt() {
-    fill(255);
-    stroke(255);
+    fill(4, 67, 137);
+    noStroke();
     push();
     translate(this.position.x, this.position.y);
     rotate(this.angle);
@@ -188,7 +210,7 @@ class Ant {
 
     for (let i = 0; i < trail; i++) {
       let alpha = Math.pow((i + 1) / trail, 2);
-      fill("rgba(255,255,255," + alpha + ")");
+      fill("rgba(4, 67, 137," + alpha + ")");
 
       let index = (frame + 1 + i) % trail;
       if (this.mPosition[index] != null) {
@@ -196,7 +218,7 @@ class Ant {
         translate(this.mPosition[index].x, this.mPosition[index].y);
         rotate(this.mAngle[index]);
         this.display();
-        if (i == trail - 1 && hungry) {
+        if (i == trail - 1 && hungry && showVision) {
           this.drawVisibilityArc();
           this.drawVisionCone();
         }
@@ -206,7 +228,7 @@ class Ant {
   }
 
   drawVisionCone() {
-    fill("rgba(255,0,0,0.25)");
+    fill("rgba(235, 179, 169,0.5)");
     arc(
       0,
       0,
@@ -219,7 +241,7 @@ class Ant {
   }
 
   drawVisibilityArc() {
-    fill("rgba(0,0,255,0.15)");
+    fill("rgba(235, 179, 169,0.15)");
     arc(
       0,
       0,
