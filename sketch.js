@@ -1,7 +1,7 @@
-const trail = 20;
+const trail = 10;
 const border = 30;
 const steeringCorrection = 3;
-var antCount = 50;
+var antCount = 15;
 var visibility = 100;
 const visionAngle = Math.PI / 3;
 
@@ -250,7 +250,7 @@ class Ant {
 
     this.maxSpeed = 5;
     this.steerStrength = 0.5;
-    this.wanderStrength = 0.01;
+    this.wanderStrength = 0.5;
 
     this.angle = 0;
     this.position = new p5.Vector(x, y);
@@ -270,13 +270,22 @@ class Ant {
   }
 
   drawAnt() {
-    fill(4, 67, 137);
+    if (this.goingHome) {
+      fill(90, 87, 102);
+    } else {
+      fill(4, 67, 137);
+    }
     noStroke();
     push();
     translate(this.position.x, this.position.y);
     rotate(this.angle);
     this.display();
     pop();
+  }
+
+  drawHeldFood() {
+    fill(232, 126, 161);
+    ellipse(0, -7, 5);
   }
 
   drawAntWithTrail() {
@@ -286,7 +295,11 @@ class Ant {
 
     for (let i = 0; i < trail; i++) {
       let alpha = Math.pow((i + 1) / trail, 2);
-      fill("rgba(4, 67, 137," + alpha + ")");
+      if (this.goingHome) {
+        fill("rgba(90, 87, 102," + alpha + ")");
+      } else {
+        fill("rgba(4, 67, 137," + alpha + ")");
+      }
 
       let index = (frame + 1 + i) % trail;
       if (this.mPosition[index] != null) {
@@ -294,9 +307,16 @@ class Ant {
         translate(this.mPosition[index].x, this.mPosition[index].y);
         rotate(this.mAngle[index]);
         this.display();
-        if (i == trail - 1 && hungry && showVision) {
-          this.drawVisibilityArc();
-          this.drawVisionCone();
+        if (i == trail - 1) {
+          if (hungry) {
+            if (showVision) {
+              //this.drawVisibilityArc();
+              this.drawVisionCone();
+            }
+            if (this.goingHome) {
+              this.drawHeldFood();
+            }
+          }
         }
         pop();
       }
@@ -352,8 +372,8 @@ class Ant {
 
   wander() {
     this.desiredDirection = p5.Vector.random2D()
-      .add(this.desiredDirection)
       .mult(this.wanderStrength)
+      .add(this.desiredDirection)
       .normalize();
   }
 
@@ -385,8 +405,8 @@ class Ant {
     return Math.abs(this.velocity.angleBetween(foodDirection));
   }
 
-  beHungry() {
-    if (this.goingHome) {
+  findHome() {
+    if (home.location.dist(this.position) < visibility) {
       let target = home.location.copy();
       this.desiredDirection = target.sub(this.position).normalize();
       if (home.location.dist(this.position) < foodRange) {
@@ -394,7 +414,11 @@ class Ant {
         this.goingHome = false;
         this.targetFood = -1;
       }
-    } else if (this.targetFood === -1) {
+    }
+  }
+
+  beHungry() {
+    if (this.targetFood === -1) {
       let closeFood = this.findCloseFood();
       if (closeFood.length > 0) {
         let chosenPiece = this.pickClosestPiece(closeFood);
@@ -426,7 +450,7 @@ class Ant {
   //   if (centreSensor.value > Math.max(leftSensor.value, rightSensor.value)) {
   //     this.desiredDirection = this.velocity;
   //   } else if (leftSensor.value > rightSensor.value) {
-  //     this.desiredDirection.sub();
+  //     this.desiredDirection.add();
   //   }
   // }
 
@@ -455,7 +479,11 @@ class Ant {
   update() {
     this.wander();
     if (hungry) {
-      this.beHungry();
+      if (this.goingHome) {
+        this.findHome();
+      } else {
+        this.beHungry();
+      }
     }
     let acceleration = this.getAcceleration();
     this.keepInsideBox();
