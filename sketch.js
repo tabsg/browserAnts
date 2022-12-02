@@ -1,4 +1,4 @@
-const trail = 10;
+const trail = 1;
 const border = 30;
 const steeringCorrection = 3;
 var antCount = 15;
@@ -28,6 +28,8 @@ const showGraph = true;
 var showVision = false;
 
 const buttons = [];
+
+const pheromones = new Set();
 
 function preload() {
   collectSound = loadSound("assets/collect.mp3");
@@ -129,6 +131,11 @@ function draw() {
     rect(0, 0, width, height);
   }
 
+  pheromones.forEach((pheromone) => {
+    pheromone.update();
+    pheromone.display();
+  });
+
   ants.forEach((ant) => {
     ant.update();
     if (seeCoverage) {
@@ -147,6 +154,28 @@ function draw() {
   }
 
   home.display();
+}
+
+class Pheromone {
+  constructor(toFood, position, strength) {
+    this.toFood = toFood;
+    this.position = position;
+    this.strength = strength;
+  }
+
+  update() {
+    this.strength -= 0.01;
+    if (this.strength <= 0.01) {
+      pheromones.delete(this);
+    }
+  }
+
+  display() {
+    this.toFood
+      ? fill("rgba(92, 128, 1," + this.strength + ")")
+      : fill("rgba(255, 147, 79," + this.strength + ")");
+    ellipse(this.position.x, this.position.y, 3);
+  }
 }
 
 class Home {
@@ -476,6 +505,12 @@ class Ant {
     this.angle = Math.atan2(this.velocity.y, this.velocity.x) + Math.PI / 2;
   }
 
+  releasePheromone() {
+    if (frameCount % 2 == 0) {
+      pheromones.add(new Pheromone(this.goingHome, this.position.copy(), 1));
+    }
+  }
+
   update() {
     this.wander();
     if (hungry) {
@@ -488,5 +523,6 @@ class Ant {
     let acceleration = this.getAcceleration();
     this.keepInsideBox();
     this.updatePosition(acceleration);
+    this.releasePheromone();
   }
 }
