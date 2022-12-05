@@ -1,16 +1,16 @@
 const trail = 1;
 const border = 30;
 const steeringCorrection = 1;
-var antCount = 15;
+var antCount = 100;
 var visibility = 30;
 const visionAngle = Math.PI / 3;
 
 var home = null;
 
 const foodCentres = 5;
-const foodPerCentre = 50;
+const foodPerCentre = 200;
 const foodCount = foodCentres * foodPerCentre;
-const foodSpread = 75;
+const foodSpread = 20;
 var eatenFood = 0;
 const foodRange = 5;
 const ants = [];
@@ -476,17 +476,57 @@ class Ant {
     this.desiredDirection = new p5.Vector(-this.velocity.x, -this.velocity.y);
   }
 
-  // sensePheromones() {
-  //   this.updateSensor(leftSensor);
-  //   this.updateSensor(centreSensor);
-  //   this.updateSensor(rightSensor);
+  findClosePheromones(goingHome) {
+    let closePheromones = [];
+    pheromones.forEach((pheromone) => {
+      if (
+        this.position.dist(pheromone.position) < visibility &&
+        pheromone.toFood != goingHome
+      ) {
+        closePheromones.push(pheromone);
+      }
+    });
+    return closePheromones;
+  }
 
-  //   if (centreSensor.value > Math.max(leftSensor.value, rightSensor.value)) {
-  //     this.desiredDirection = this.velocity;
-  //   } else if (leftSensor.value > rightSensor.value) {
-  //     this.desiredDirection.add();
-  //   }
-  // }
+  getAngleToPheromone(pheromone) {
+    let location = new p5.Vector(pheromone.position.x, pheromone.position.y);
+    let pheromoneDirection = location.sub(this.position);
+    return this.velocity.angleBetween(pheromoneDirection);
+  }
+
+  findStrongestDirection(closePheromones) {
+    let left = 0;
+    let centre = 0;
+    let right = 0;
+    closePheromones.forEach((pheromone) => {
+      let angle = this.getAngleToPheromone(pheromone);
+      if (angle > -visionAngle && angle <= -visionAngle / 3) {
+        left += pheromone.strength;
+      } else if (angle > -visionAngle / 3 && angle <= visionAngle / 3) {
+        centre += pheromone.strength;
+      } else if (angle > visionAngle / 3 && angle < visionAngle) {
+        right += pheromone.strength;
+      }
+    });
+    if (left > centre && left > right) {
+      return -1;
+    } else if (centre >= right) {
+      return 0;
+    } else {
+      return 1;
+    }
+  }
+
+  sensePheromones() {
+    let closePheromones = this.findClosePheromones(this.goingHome);
+    let strongestDirection = this.findStrongestDirection(closePheromones);
+    if (strongestDirection == -1) {
+      this.desiredDirection.rotate((-2 * visionAngle) / 3);
+    } else if (strongestDirection == 1) {
+      this.desiredDirection.rotate((2 * visionAngle) / 3);
+    }
+  }
 
   getAcceleration() {
     let desiredDirectionCopy = this.desiredDirection.copy();
@@ -520,6 +560,7 @@ class Ant {
   update() {
     this.wander();
     if (hungry) {
+      this.sensePheromones();
       if (this.goingHome) {
         this.findHome();
       } else {
