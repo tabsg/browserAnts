@@ -30,6 +30,7 @@ var showVision = false;
 const buttons = [];
 
 const pheromones = new Set();
+const maxPheromones = 100;
 
 function preload() {
   collectSound = loadSound("assets/collect.mp3");
@@ -291,6 +292,7 @@ class Ant {
 
     this.targetFood = -1;
     this.goingHome = false;
+    this.pheromoneCounter = maxPheromones;
   }
 
   display() {
@@ -441,6 +443,7 @@ class Ant {
       if (home.location.dist(this.position) < foodRange) {
         home.receiveFood();
         this.goingHome = false;
+        this.pheromoneCounter = maxPheromones;
         this.targetFood = -1;
       }
     }
@@ -464,6 +467,7 @@ class Ant {
           this.targetFood.eat();
           this.targetFood = -1;
           this.goingHome = true;
+          this.pheromoneCounter = maxPheromones;
           this.turnAround();
         }
       } else {
@@ -552,8 +556,9 @@ class Ant {
   }
 
   releasePheromone() {
-    if (frameCount % 2 == 0) {
+    if (frameCount % 2 == 0 && this.pheromoneCounter > 0) {
       pheromones.add(new Pheromone(this.goingHome, this.position.copy(), 1));
+      this.pheromoneCounter--;
     }
   }
 
