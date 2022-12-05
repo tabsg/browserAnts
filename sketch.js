@@ -1,8 +1,8 @@
 const trail = 1;
 const border = 30;
-const steeringCorrection = 3;
+const steeringCorrection = 1;
 var antCount = 15;
-var visibility = 100;
+var visibility = 30;
 const visionAngle = Math.PI / 3;
 
 var home = null;
@@ -277,7 +277,7 @@ class Ant {
   constructor(x, y) {
     this.deltaTime = 1;
 
-    this.maxSpeed = 5;
+    this.maxSpeed = 3;
     this.steerStrength = 0.5;
     this.wanderStrength = 0.5;
 
@@ -383,19 +383,19 @@ class Ant {
 
     if (pos.x < border) {
       this.position.x = border;
-      this.velocity.x += steeringCorrection;
+      this.turnAround();
     }
     if (pos.x > width - border) {
       this.position.x = width - border;
-      this.velocity.x -= steeringCorrection;
+      this.turnAround();
     }
     if (pos.y < border) {
       this.position.y = border;
-      this.velocity.y += steeringCorrection;
+      this.turnAround();
     }
     if (pos.y > height - border) {
       this.position.y = height - border;
-      this.velocity.y -= steeringCorrection;
+      this.turnAround();
     }
   }
 
@@ -464,11 +464,16 @@ class Ant {
           this.targetFood.eat();
           this.targetFood = -1;
           this.goingHome = true;
+          this.turnAround();
         }
       } else {
         this.targetFood = -1;
       }
     }
+  }
+
+  turnAround() {
+    this.desiredDirection = new p5.Vector(-this.velocity.x, -this.velocity.y);
   }
 
   // sensePheromones() {
@@ -484,7 +489,8 @@ class Ant {
   // }
 
   getAcceleration() {
-    let desiredVelocity = this.desiredDirection.mult(this.maxSpeed);
+    let desiredDirectionCopy = this.desiredDirection.copy();
+    let desiredVelocity = desiredDirectionCopy.mult(this.maxSpeed);
     let desiredSteeringForce = desiredVelocity
       .sub(this.velocity)
       .mult(this.steerStrength);
