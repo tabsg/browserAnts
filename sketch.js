@@ -2,7 +2,7 @@ const trail = 1;
 const border = 30;
 const steeringCorrection = 1;
 var antCount = 150;
-var visibility = 30;
+var visibility = 50;
 const visionAngle = Math.PI / 3;
 
 var home = null;
@@ -30,7 +30,7 @@ var showVision = false;
 const buttons = [];
 
 const pheromones = new Set();
-const maxPheromones = 1000;
+const maxPheromones = 300;
 
 function preload() {
   collectSound = loadSound("assets/collect.mp3");
@@ -137,6 +137,8 @@ function draw() {
     pheromone.display();
   });
 
+  text(int(getFrameRate()), width + 10, height + 10);
+
   ants.forEach((ant) => {
     ant.update();
     if (seeCoverage) {
@@ -165,7 +167,7 @@ class Pheromone {
   }
 
   update() {
-    this.strength -= 0.01;
+    this.strength -= 0.02;
     if (this.strength <= 0.02) {
       pheromones.delete(this);
     }
