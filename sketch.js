@@ -1,7 +1,7 @@
 const trail = 1;
 const border = 30;
 const steeringCorrection = 1;
-var antCount = 100;
+var antCount = 150;
 var visibility = 30;
 const visionAngle = Math.PI / 3;
 
@@ -30,7 +30,7 @@ var showVision = false;
 const buttons = [];
 
 const pheromones = new Set();
-const maxPheromones = 100;
+const maxPheromones = 1000;
 
 function preload() {
   collectSound = loadSound("assets/collect.mp3");
@@ -166,7 +166,7 @@ class Pheromone {
 
   update() {
     this.strength -= 0.01;
-    if (this.strength <= 0.01) {
+    if (this.strength <= 0.02) {
       pheromones.delete(this);
     }
   }
@@ -218,7 +218,9 @@ class Graph {
     rectMode(CORNERS);
 
     let graphWidth = min(width, frameCount);
-    this.frameValues.push((graphHeight * eatenFood) / foodCount);
+    if (frameCount % 5 == 0) {
+      this.frameValues.push((graphHeight * eatenFood) / foodCount);
+    }
     for (let frame = 0; frame <= graphWidth; frame++) {
       this.displayBar(
         frame - 1,
@@ -280,7 +282,7 @@ class Ant {
 
     this.maxSpeed = 3;
     this.steerStrength = 0.5;
-    this.wanderStrength = 0.5;
+    this.wanderStrength = 0.2;
 
     this.angle = 0;
     this.position = new p5.Vector(x, y);
@@ -484,7 +486,7 @@ class Ant {
     let closePheromones = [];
     pheromones.forEach((pheromone) => {
       if (
-        this.position.dist(pheromone.position) < visibility &&
+        this.position.dist(pheromone.position) < 2 * visibility &&
         pheromone.toFood != goingHome
       ) {
         closePheromones.push(pheromone);
@@ -556,7 +558,7 @@ class Ant {
   }
 
   releasePheromone() {
-    if (frameCount % 2 == 0 && this.pheromoneCounter > 0) {
+    if (frameCount % 3 == 0 && this.pheromoneCounter > 0) {
       pheromones.add(new Pheromone(this.goingHome, this.position.copy(), 1));
       this.pheromoneCounter--;
     }
