@@ -32,9 +32,11 @@ const buttons = [];
 const pheromones = new Set();
 const maxPheromones = 300;
 
+const obstacles = [];
+
 function preload() {
-  collectSound = loadSound("assets/collect.mp3");
-  returnSound = loadSound("assets/return.mp3");
+  // collectSound = loadSound("assets/collect.mp3");
+  // returnSound = loadSound("assets/return.mp3");
 }
 
 function setup() {
@@ -58,6 +60,9 @@ function setup() {
   }
 
   graph = new Graph();
+
+  obstacles.push(new Obstacle(10, 10, 30, 30));
+  obstacles.push(new Obstacle(100, 200, 40, 30));
 
   smooth();
   rectMode(CENTER);
@@ -90,7 +95,7 @@ function createButtons() {
     let button = createButton(buttonName);
     button.position(width, 60 * i);
     button.mousePressed(buttonFunctions[i]);
-    buttons.push[i];
+    buttons.push(i);
   }
 }
 
@@ -132,6 +137,10 @@ function draw() {
     rect(0, 0, width, height);
   }
 
+  obstacles.forEach((obstacle) => {
+    obstacle.display();
+  });
+
   pheromones.forEach((pheromone) => {
     pheromone.update();
     pheromone.display();
@@ -159,6 +168,32 @@ function draw() {
   home.display();
 }
 
+class Obstacle {
+  constructor(x, y, w, h) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+  }
+
+  display() {
+    fill(0);
+    rectMode(CENTER);
+    rect(this.x, this.y, this.w, this.h);
+  }
+
+  contains(ant) {
+    let nextPos = new p5.Vector(ant.position.x, ant.position.y);
+    nextPos.add(new p5.Vector(ant.velocity.x, ant.velocity.y));
+    return (
+      nextPos.x > this.x - this.w &&
+      nextPos.x < this.x + this.w &&
+      nextPos.y > this.y - this.h &&
+      nextPos.y < this.y + this.h
+    );
+  }
+}
+
 class Pheromone {
   constructor(toFood, position, strength) {
     this.toFood = toFood;
@@ -174,18 +209,20 @@ class Pheromone {
   }
 
   display() {
-    this.toFood
-      ? fill("rgba(92, 128, 1," + this.strength + ")")
-      : fill("rgba(255, 147, 79," + this.strength + ")");
+    if (this.toFood) {
+      fill("rgba(92, 128, 1," + this.strength + ")");
+    } else {
+      fill("rgba(255, 147, 79," + this.strength + ")");
+    }
     ellipse(this.position.x, this.position.y, 3);
   }
 }
 
 class Home {
   constructor() {
-    let x = Math.random() * (width - 2 * border) + border;
-    let y = Math.random() * (height - 2 * border) + border;
-    this.location = new p5.Vector(x, y);
+    //let x = Math.random() * (width - 2 * border) + border;
+    //let y = Math.random() * (height - 2 * border) + border;
+    this.location = new p5.Vector(300, 300);
     this.foodCollected = 0;
   }
 
@@ -200,7 +237,7 @@ class Home {
 
   receiveFood() {
     this.foodCollected++;
-    returnSound.play();
+    // returnSound.play();
   }
 }
 
@@ -275,7 +312,7 @@ class Food {
     this.eaten = true;
     eatenFood++;
     food.delete(this);
-    collectSound.play();
+    // collectSound.play();
   }
 }
 class Ant {
@@ -566,6 +603,45 @@ class Ant {
     }
   }
 
+  quarterTurn() {
+    this.desiredDirection = p5.Vector.rotate(this.velocity.copy(), HALF_PI);
+  }
+
+  keepOutisdeObstacle(obstacle) {
+    let leftEdge = obstacle.x - obstacle.w / 2;
+    let rightEdge = obstacle.x + obstacle.w / 2;
+    let topEdge = obstacle.y - obstacle.h / 2;
+    let bottomEdge = obstacle.y + obstacle.h / 2;
+
+    let xInisde = this.position.x > leftEdge && this.position.x < rightEdge;
+    let yInside = this.position.y > topEdge && this.position.y < bottomEdge;
+
+    let repel = 4;
+
+    if (yInside) {
+      if (this.position.x < leftEdge) {
+        this.position.x -= repel;
+      } else if (this.position.x > rightEdge) {
+        this.position.x += repel;
+      }
+    } else if (xInisde) {
+      if (this.position.y < topEdge) {
+        this.position.y -= repel;
+      } else if (this.position.y > bottomEdge) {
+        this.position.y += repel;
+      }
+      this.turnAround();
+    }
+  }
+
+  checkObstacles() {
+    obstacles.forEach((obstacle) => {
+      if (obstacle.contains(this)) {
+        this.keepOutisdeObstacle(obstacle);
+      }
+    });
+  }
+
   update() {
     this.wander();
     if (hungry) {
@@ -576,6 +652,8 @@ class Ant {
         this.beHungry();
       }
     }
+    this.checkObstacles();
+
     let acceleration = this.getAcceleration();
     this.keepInsideBox();
     this.updatePosition(acceleration);
