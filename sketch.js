@@ -214,9 +214,11 @@ function updateGrids() {
 
 function displayGrids() {
   rectMode(CORNERS);
+  maxRow = height / gridSize;
+  maxCol = width / gridSize;
 
-  for (let row = 0; row < height / gridSize; row++) {
-    for (let col = 0; col < width / gridSize; col++) {
+  for (let row = 0; row < maxRow; row++) {
+    for (let col = 0; col < maxCol; col++) {
       let toFood = toFoodGrid[row][col];
       let toHome = toHomeGrid[row][col];
       if (toFood > toHome) {
@@ -225,10 +227,10 @@ function displayGrids() {
         fill("rgba(255, 147, 79," + toHome + ")");
       }
       rect(
-        col * gridSize,
         row * gridSize,
-        (col + 1) * gridSize,
-        (row + 1) * gridSize
+        col * gridSize,
+        (row + 1) * gridSize,
+        (col + 1) * gridSize
       );
     }
   }
