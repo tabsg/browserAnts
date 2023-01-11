@@ -33,6 +33,12 @@ const pheromones = new Set();
 const maxPheromones = 300;
 
 const obstacles = [];
+const obstacleCount = 3;
+var obstaclesPresent = false;
+
+var gridSize = 5;
+const toFoodGrid = [];
+const toHomeGrid = [];
 
 function preload() {
   // collectSound = loadSound("assets/collect.mp3");
@@ -46,6 +52,9 @@ function setup() {
   home = new Home();
   noStroke();
 
+  // let importantLocations = new Set();
+  // importantLocations.add(home.location);
+
   for (let i = 0; i < antCount; i++) {
     ants.push(new Ant(home.location.x, home.location.y));
   }
@@ -54,6 +63,7 @@ function setup() {
     let x = Math.random() * (width - 2 * border) + border;
     let y = Math.random() * (height - 2 * border) + border;
     let centre = new p5.Vector(x, y);
+
     for (let k = 0; k < foodPerCentre; k++) {
       food.add(new Food(centre));
     }
@@ -61,8 +71,22 @@ function setup() {
 
   graph = new Graph();
 
-  obstacles.push(new Obstacle(10, 10, 30, 30));
-  obstacles.push(new Obstacle(100, 200, 40, 30));
+  for (let k = 0; k < foodCentres; k++) {
+    let x = Math.random() * (width - 2 * border) + border;
+    let y = Math.random() * (height - 2 * border) + border;
+    let w = (Math.random() * width) / 5 + 10;
+    let h = (Math.random() * height) / 5 + 10;
+    obstacles.push(new Obstacle(x, y, w, h));
+  }
+
+  for (let row = 0; row < height / gridSize; row++) {
+    toFoodGrid.push([]);
+    toHomeGrid.push([]);
+    for (let col = 0; col < width / gridSize; col++) {
+      toFoodGrid[row].push(0);
+      toHomeGrid[row].push(0);
+    }
+  }
 
   smooth();
   rectMode(CENTER);
@@ -74,6 +98,7 @@ function setup() {
 function createButtons() {
   let buttonNames = [
     "show vision",
+    "toggle obstacles",
     "see coverage",
     "be hungry",
     "add ant",
@@ -83,6 +108,7 @@ function createButtons() {
   ];
   let buttonFunctions = [
     toggleShowVision,
+    toggleObstacles,
     toggleSeeCoverage,
     toggleBeHungry,
     addAnt,
@@ -93,7 +119,7 @@ function createButtons() {
   for (let i = 0; i < buttonNames.length; i++) {
     let buttonName = buttonNames[i];
     let button = createButton(buttonName);
-    button.position(width, 60 * i);
+    button.position(width, (height / buttonNames.length) * i);
     button.mousePressed(buttonFunctions[i]);
     buttons.push(i);
   }
@@ -101,6 +127,10 @@ function createButtons() {
 
 function toggleShowVision() {
   showVision = !showVision;
+}
+
+function toggleObstacles() {
+  obstaclesPresent = !obstaclesPresent;
 }
 
 function toggleSeeCoverage() {
@@ -137,9 +167,14 @@ function draw() {
     rect(0, 0, width, height);
   }
 
-  obstacles.forEach((obstacle) => {
-    obstacle.display();
-  });
+  if (obstaclesPresent) {
+    obstacles.forEach((obstacle) => {
+      obstacle.display();
+    });
+  }
+
+  updateGrids();
+  displayGrids();
 
   pheromones.forEach((pheromone) => {
     pheromone.update();
@@ -166,6 +201,37 @@ function draw() {
   }
 
   home.display();
+}
+
+function updateGrids() {
+  for (let row = 0; row < height / gridSize; row++) {
+    for (let col = 0; col < width / gridSize; col++) {
+      toFoodGrid[row][col] = Math.max(toFoodGrid[row][col] - 0.08, 0);
+      toHomeGrid[row][col] = Math.max(toHomeGrid[row][col] - 0.08, 0);
+    }
+  }
+}
+
+function displayGrids() {
+  rectMode(CORNERS);
+
+  for (let row = 0; row < height / gridSize; row++) {
+    for (let col = 0; col < width / gridSize; col++) {
+      let toFood = toFoodGrid[row][col];
+      let toHome = toHomeGrid[row][col];
+      if (toFood > toHome) {
+        fill("rgba(92, 128, 1," + toFood + ")");
+      } else {
+        fill("rgba(255, 147, 79," + toHome + ")");
+      }
+      rect(
+        col * gridSize,
+        row * gridSize,
+        (col + 1) * gridSize,
+        (row + 1) * gridSize
+      );
+    }
+  }
 }
 
 class Obstacle {
@@ -598,7 +664,22 @@ class Ant {
 
   releasePheromone() {
     if (frameCount % 3 == 0 && this.pheromoneCounter > 0) {
-      pheromones.add(new Pheromone(this.goingHome, this.position.copy(), 1));
+      // pheromones.add(new Pheromone(this.goingHome, this.position.copy(), 1));
+      if (this.goingHome) {
+        toHomeGrid[~~(this.position.x / gridSize)][
+          ~~(this.position.y / gridSize)
+        ] =
+          toHomeGrid[~~(this.position.x / gridSize)][
+            ~~(this.position.y / gridSize)
+          ] + 1;
+      } else {
+        toFoodGrid[~~(this.position.x / gridSize)][
+          ~~(this.position.y / gridSize)
+        ] =
+          toFoodGrid[~~(this.position.x / gridSize)][
+            ~~(this.position.y / gridSize)
+          ] + 1;
+      }
       this.pheromoneCounter--;
     }
   }
@@ -652,7 +733,9 @@ class Ant {
         this.beHungry();
       }
     }
-    this.checkObstacles();
+    if (obstaclesPresent) {
+      this.checkObstacles();
+    }
 
     let acceleration = this.getAcceleration();
     this.keepInsideBox();
