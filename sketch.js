@@ -36,7 +36,7 @@ const obstacles = [];
 const obstacleCount = 3;
 var obstaclesPresent = false;
 
-var gridSize = 5;
+var gridSize = 10;
 const toFoodGrid = [];
 const toHomeGrid = [];
 
@@ -95,70 +95,6 @@ function setup() {
   createButtons();
 }
 
-function createButtons() {
-  let buttonNames = [
-    "show vision",
-    "toggle obstacles",
-    "see coverage",
-    "be hungry",
-    "add ant",
-    "remove ant",
-    "increase visibility",
-    "decrease visibility",
-  ];
-  let buttonFunctions = [
-    toggleShowVision,
-    toggleObstacles,
-    toggleSeeCoverage,
-    toggleBeHungry,
-    addAnt,
-    removeAnt,
-    increaseVisibility,
-    decreaseVisibility,
-  ];
-  for (let i = 0; i < buttonNames.length; i++) {
-    let buttonName = buttonNames[i];
-    let button = createButton(buttonName);
-    button.position(width, (height / buttonNames.length) * i);
-    button.mousePressed(buttonFunctions[i]);
-    buttons.push(i);
-  }
-}
-
-function toggleShowVision() {
-  showVision = !showVision;
-}
-
-function toggleObstacles() {
-  obstaclesPresent = !obstaclesPresent;
-}
-
-function toggleSeeCoverage() {
-  seeCoverage = !seeCoverage;
-}
-
-function toggleBeHungry() {
-  hungry = !hungry;
-}
-
-function addAnt() {
-  ants.push(new Ant(home.location.x, home.location.y));
-  antCount++;
-}
-
-function removeAnt() {
-  ants.splice(0, 1);
-  antCount--;
-}
-
-function increaseVisibility() {
-  visibility += 10;
-}
-
-function decreaseVisibility() {
-  visibility -= 10;
-}
-
 function draw() {
   if (!seeCoverage) {
     background(108, 75, 94);
@@ -203,6 +139,14 @@ function draw() {
   home.display();
 }
 
+function drawHexagon(x, y, r) {
+  beginShape();
+  for (let a = 0; a < TAU; a += TAU / 6) {
+    vertex(x + r * sin(a), y + r * cos(a));
+  }
+  endShape(CLOSE);
+}
+
 function updateGrids() {
   for (let row = 0; row < height / gridSize; row++) {
     for (let col = 0; col < width / gridSize; col++) {
@@ -213,26 +157,35 @@ function updateGrids() {
 }
 
 function displayGrids() {
-  rectMode(CORNERS);
-  maxRow = height / gridSize;
-  maxCol = width / gridSize;
+  // rectMode(CORNERS);
+  // maxRow = height / gridSize;
+  // maxCol = width / gridSize;
 
-  for (let row = 0; row < maxRow; row++) {
-    for (let col = 0; col < maxCol; col++) {
-      let toFood = toFoodGrid[row][col];
-      let toHome = toHomeGrid[row][col];
-      if (toFood > toHome) {
-        fill("rgba(92, 128, 1," + toFood + ")");
-      } else {
-        fill("rgba(255, 147, 79," + toHome + ")");
-      }
-      rect(
-        row * gridSize,
-        col * gridSize,
-        (row + 1) * gridSize,
-        (col + 1) * gridSize
-      );
+  // for (let row = 0; row < maxRow; row++) {
+  //   for (let col = 0; col < maxCol; col++) {
+  //     let toFood = toFoodGrid[row][col];
+  //     let toHome = toHomeGrid[row][col];
+  //     if (toFood > toHome) {
+  //       fill("rgba(92, 128, 1," + toFood + ")");
+  //     } else {
+  //       fill("rgba(255, 147, 79," + toHome + ")");
+  //     }
+  //     rect(
+  //       row * gridSize,
+  //       col * gridSize,
+  //       (row + 1) * gridSize,
+  //       (col + 1) * gridSize
+  //     );
+  //   }
+  // }
+
+  stroke(0);
+  count = 0;
+  for (x = 0; x < width; x += gridSize / 2.3) {
+    for (y = 0; y < height; y += gridSize * 1.5) {
+      drawHexagon(x, y + gridSize * (count % 2 == 0) * 0.75, gridSize / 2);
     }
+    count++;
   }
 }
 
@@ -665,7 +618,7 @@ class Ant {
   }
 
   releasePheromone() {
-    if (frameCount % 3 == 0 && this.pheromoneCounter > 0) {
+    if (this.pheromoneCounter > 0) {
       // pheromones.add(new Pheromone(this.goingHome, this.position.copy(), 1));
       if (this.goingHome) {
         toHomeGrid[~~(this.position.x / gridSize)][
@@ -744,4 +697,68 @@ class Ant {
     this.updatePosition(acceleration);
     this.releasePheromone();
   }
+}
+
+function createButtons() {
+  let buttonNames = [
+    "show vision",
+    "toggle obstacles",
+    "see coverage",
+    "be hungry",
+    "add ant",
+    "remove ant",
+    "increase visibility",
+    "decrease visibility",
+  ];
+  let buttonFunctions = [
+    toggleShowVision,
+    toggleObstacles,
+    toggleSeeCoverage,
+    toggleBeHungry,
+    addAnt,
+    removeAnt,
+    increaseVisibility,
+    decreaseVisibility,
+  ];
+  for (let i = 0; i < buttonNames.length; i++) {
+    let buttonName = buttonNames[i];
+    let button = createButton(buttonName);
+    button.position(width, (height / buttonNames.length) * i);
+    button.mousePressed(buttonFunctions[i]);
+    buttons.push(i);
+  }
+}
+
+function toggleShowVision() {
+  showVision = !showVision;
+}
+
+function toggleObstacles() {
+  obstaclesPresent = !obstaclesPresent;
+}
+
+function toggleSeeCoverage() {
+  seeCoverage = !seeCoverage;
+}
+
+function toggleBeHungry() {
+  hungry = !hungry;
+}
+
+function addAnt() {
+  ants.push(new Ant(home.location.x, home.location.y));
+  antCount++;
+}
+
+function removeAnt() {
+  ants.splice(0, 1);
+  antCount--;
+}
+
+function increaseVisibility() {
+  visibility += 10;
+}
+
+function decreaseVisibility() {
+  visibility -= 10;
 }
