@@ -1,7 +1,7 @@
 const trail = 1;
 const border = 30;
 const steeringCorrection = 1;
-var antCount = 15;
+var antCount = 150;
 var visibility = 50;
 const visionAngle = Math.PI / 3;
 
@@ -36,7 +36,7 @@ const obstacles = [];
 const obstacleCount = 3;
 var obstaclesPresent = false;
 
-var gridSize = 8;
+var gridSize = 15;
 const toFoodGrid = [];
 const toHomeGrid = [];
 
@@ -95,6 +95,8 @@ function setup() {
 }
 
 function draw() {
+  noStroke();
+
   if (!seeCoverage) {
     background(108, 75, 94);
     fill(223, 243, 228);
@@ -149,56 +151,44 @@ function drawHexagon(x, y, r) {
 function updateGrids() {
   for (let row = 0; row < height / gridSize; row++) {
     for (let col = 0; col < width / gridSize; col++) {
-      toFoodGrid[row][col] = Math.max(toFoodGrid[row][col] - 0.08, 0);
-      toHomeGrid[row][col] = Math.max(toHomeGrid[row][col] - 0.08, 0);
+      toFoodGrid[row][col] = Math.max(toFoodGrid[row][col] - 1.5, 0);
+      toHomeGrid[row][col] = Math.max(toHomeGrid[row][col] - 1.5, 0);
     }
   }
+}
+
+function axial_round(x, y) {
+  const xgrid = Math.round(x),
+    ygrid = Math.round(y);
+  (x -= xgrid), (y -= ygrid); // remainder
+  const dx = Math.round(x + 0.5 * y) * (x * x >= y * y);
+  const dy = Math.round(y + 0.5 * x) * (x * x < y * y);
+  return [xgrid + dx, ygrid + dy];
 }
 
 function cartesianToHex(x, y) {
   var q = ((Math.sqrt(3) / 3) * x - (1 / 3) * y) / gridSize;
   var r = ((2 / 3) * y) / gridSize;
-  return [int(q), int(r)];
+  return axial_round(q, r);
 }
 
 function displayGrids() {
-  // rectMode(CORNERS);
-  // maxRow = height / gridSize;
-  // maxCol = width / gridSize;
-
-  // for (let row = 0; row < maxRow; row++) {
-  //   for (let col = 0; col < maxCol; col++) {
-  //     let toFood = toFoodGrid[row][col];
-  //     let toHome = toHomeGrid[row][col];
-  //     if (toFood > toHome) {
-  //       fill("rgba(92, 128, 1," + toFood + ")");
-  //     } else {
-  //       fill("rgba(255, 147, 79," + toHome + ")");
-  //     }
-  //     rect(
-  //       row * gridSize,
-  //       col * gridSize,
-  //       (row + 1) * gridSize,
-  //       (col + 1) * gridSize
-  //     );
-  //   }
-  // }
-
-  stroke(0);
   count = 0;
   for (x = gridSize; x < width - gridSize; x += gridSize / 2.3) {
     for (y = gridSize; y < height - gridSize; y += gridSize * 1.5) {
       let qr = cartesianToHex(x, y);
       let q = qr[0];
       let r = qr[1];
-      let toFood = toFoodGrid[r][q + Math.floor(r / 2)];
-      let toHome = toHomeGrid[r][q + Math.floor(r / 2)];
-      if (toFood > toHome) {
-        fill("rgba(92, 128, 1," + toFood + ")");
-      } else {
-        fill("rgba(255, 147, 79," + toHome + ")");
-      }
-
+      let toFood = toFoodGrid[r][q + Math.round(r / 2)];
+      let toHome = toHomeGrid[r][q + Math.round(r / 2)];
+      // if (toFood > toHome) {
+      //   fill(92, 128, 1, toFood);
+      // } else {
+      //   fill(255, 147, 79, toHome);
+      // }
+      fill(250, 102, 241, toFood);
+      drawHexagon(x, y + gridSize * (count % 2 == 0) * 0.75, gridSize / 2);
+      fill(57, 143, 249, toHome);
       drawHexagon(x, y + gridSize * (count % 2 == 0) * 0.75, gridSize / 2);
     }
     count++;
@@ -556,39 +546,32 @@ class Ant {
     this.desiredDirection = new p5.Vector(-this.velocity.x, -this.velocity.y);
   }
 
-  findClosePheromones(goingHome) {
-    let closePheromones = [];
-    pheromones.forEach((pheromone) => {
-      if (
-        this.position.dist(pheromone.position) < 2 * visibility &&
-        pheromone.toFood != goingHome
-      ) {
-        closePheromones.push(pheromone);
-      }
-    });
-    return closePheromones;
-  }
-
   getAngleToPheromone(pheromone) {
     let location = new p5.Vector(pheromone.position.x, pheromone.position.y);
     let pheromoneDirection = location.sub(this.position);
     return this.velocity.angleBetween(pheromoneDirection);
   }
 
-  findStrongestDirection(closePheromones) {
-    let left = 0;
-    let centre = 0;
-    let right = 0;
-    closePheromones.forEach((pheromone) => {
-      let angle = this.getAngleToPheromone(pheromone);
-      if (angle > -visionAngle && angle <= -visionAngle / 3) {
-        left += pheromone.strength;
-      } else if (angle > -visionAngle / 3 && angle <= visionAngle / 3) {
-        centre += pheromone.strength;
-      } else if (angle > visionAngle / 3 && angle < visionAngle) {
-        right += pheromone.strength;
-      }
-    });
+  findStrongestDirection(q, r, visibleNeighbours) {
+    let left;
+    let centre;
+    let right;
+    if (this.goingHome) {
+      left =
+        toHomeGrid[r + visibleNeighbours[0][1]][q + visibleNeighbours[0][0]];
+      centre =
+        toHomeGrid[r + visibleNeighbours[1][1]][q + visibleNeighbours[1][0]];
+      right =
+        toHomeGrid[r + visibleNeighbours[2][1]][q + visibleNeighbours[2][0]];
+    } else {
+      left =
+        toFoodGrid[r + visibleNeighbours[0][1]][q + visibleNeighbours[0][0]];
+      centre =
+        toFoodGrid[r + visibleNeighbours[1][1]][q + visibleNeighbours[1][0]];
+      right =
+        toFoodGrid[r + visibleNeighbours[2][1]][q + visibleNeighbours[2][0]];
+    }
+
     if (left > centre && left > right) {
       return -1;
     } else if (centre >= right) {
@@ -599,8 +582,48 @@ class Ant {
   }
 
   sensePheromones() {
-    let closePheromones = this.findClosePheromones(this.goingHome);
-    let strongestDirection = this.findStrongestDirection(closePheromones);
+    // even rows
+    let evenNeighbours = [
+      [+1, -1],
+      [+1, 0],
+      [+1, +1],
+      [0, +1],
+      [-1, 0],
+      [0, -1],
+    ];
+    // odd rows
+    let oddNeighbours = [
+      [0, -1],
+      [+1, 0],
+      [0, +1],
+      [-1, +1],
+      [-1, 0],
+      [-1, -1],
+    ];
+
+    let curr = cartesianToHex(this.position.x, this.position.y);
+    let q = curr[0];
+    let r = curr[1];
+    let direction = Math.round((this.angle * 6) / (2 * PI));
+
+    let neighbours = [];
+    if (r % 2 == 0) {
+      neighbours = evenNeighbours;
+    } else {
+      neighbours = oddNeighbours;
+    }
+
+    let visibleNeighbours = [
+      neighbours[(direction + 5) % 6],
+      neighbours[(direction + 6) % 6],
+      neighbours[(direction + 7) % 6],
+    ];
+
+    let strongestDirection = this.findStrongestDirection(
+      q + Math.round(r / 2),
+      r,
+      visibleNeighbours
+    );
     if (strongestDirection == -1) {
       this.desiredDirection.rotate((-2 * visionAngle) / 3);
     } else if (strongestDirection == 1) {
@@ -638,11 +661,15 @@ class Ant {
       let q = qr[0];
       let r = qr[1];
       if (this.goingHome) {
-        toHomeGrid[r][q + Math.floor(r / 2)] =
-          toHomeGrid[r][q + Math.floor(r / 2)] + 0.5;
+        toFoodGrid[r][q + Math.floor(r / 2)] = Math.min(
+          toFoodGrid[r][q + Math.floor(r / 2)] + 4,
+          125
+        );
       } else {
-        toFoodGrid[r][q + Math.floor(r / 2)] =
-          toFoodGrid[r][q + Math.floor(r / 2)] + 0.5;
+        toHomeGrid[r][q + Math.floor(r / 2)] = Math.min(
+          toHomeGrid[r][q + Math.floor(r / 2)] + 4,
+          125
+        );
       }
       this.pheromoneCounter--;
     }
