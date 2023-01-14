@@ -1,7 +1,7 @@
 const trail = 1;
 const border = 30;
 const steeringCorrection = 1;
-var antCount = 150;
+var antCount = 15;
 var visibility = 50;
 const visionAngle = Math.PI / 3;
 
@@ -36,7 +36,7 @@ const obstacles = [];
 const obstacleCount = 3;
 var obstaclesPresent = false;
 
-var gridSize = 10;
+var gridSize = 8;
 const toFoodGrid = [];
 const toHomeGrid = [];
 
@@ -50,7 +50,6 @@ function setup() {
   fill(223, 243, 228);
 
   home = new Home();
-  noStroke();
 
   // let importantLocations = new Set();
   // importantLocations.add(home.location);
@@ -156,6 +155,12 @@ function updateGrids() {
   }
 }
 
+function cartesianToHex(x, y) {
+  var q = ((Math.sqrt(3) / 3) * x - (1 / 3) * y) / gridSize;
+  var r = ((2 / 3) * y) / gridSize;
+  return [int(q), int(r)];
+}
+
 function displayGrids() {
   // rectMode(CORNERS);
   // maxRow = height / gridSize;
@@ -181,8 +186,19 @@ function displayGrids() {
 
   stroke(0);
   count = 0;
-  for (x = 0; x < width; x += gridSize / 2.3) {
-    for (y = 0; y < height; y += gridSize * 1.5) {
+  for (x = gridSize; x < width - gridSize; x += gridSize / 2.3) {
+    for (y = gridSize; y < height - gridSize; y += gridSize * 1.5) {
+      let qr = cartesianToHex(x, y);
+      let q = qr[0];
+      let r = qr[1];
+      let toFood = toFoodGrid[r][q + Math.floor(r / 2)];
+      let toHome = toHomeGrid[r][q + Math.floor(r / 2)];
+      if (toFood > toHome) {
+        fill("rgba(92, 128, 1," + toFood + ")");
+      } else {
+        fill("rgba(255, 147, 79," + toHome + ")");
+      }
+
       drawHexagon(x, y + gridSize * (count % 2 == 0) * 0.75, gridSize / 2);
     }
     count++;
@@ -248,7 +264,6 @@ class Home {
   }
 
   display() {
-    noStroke();
     fill(89, 149, 237);
     ellipse(this.location.x, this.location.y, 50);
     fill(0, 0, 0);
@@ -323,7 +338,6 @@ class Food {
 
   display() {
     if (!this.eaten) {
-      noStroke();
       fill(232, 126, 161);
       ellipse(this.position.x, this.position.y, 5);
     }
@@ -620,20 +634,15 @@ class Ant {
   releasePheromone() {
     if (this.pheromoneCounter > 0) {
       // pheromones.add(new Pheromone(this.goingHome, this.position.copy(), 1));
+      let qr = cartesianToHex(this.position.x, this.position.y);
+      let q = qr[0];
+      let r = qr[1];
       if (this.goingHome) {
-        toHomeGrid[~~(this.position.x / gridSize)][
-          ~~(this.position.y / gridSize)
-        ] =
-          toHomeGrid[~~(this.position.x / gridSize)][
-            ~~(this.position.y / gridSize)
-          ] + 1;
+        toHomeGrid[r][q + Math.floor(r / 2)] =
+          toHomeGrid[r][q + Math.floor(r / 2)] + 0.5;
       } else {
-        toFoodGrid[~~(this.position.x / gridSize)][
-          ~~(this.position.y / gridSize)
-        ] =
-          toFoodGrid[~~(this.position.x / gridSize)][
-            ~~(this.position.y / gridSize)
-          ] + 1;
+        toFoodGrid[r][q + Math.floor(r / 2)] =
+          toFoodGrid[r][q + Math.floor(r / 2)] + 0.5;
       }
       this.pheromoneCounter--;
     }
