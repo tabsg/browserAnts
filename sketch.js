@@ -660,3 +660,70 @@ class Ant {
     this.releasePheromone();
   }
 }
+
+class Boundary {
+  constructor(x, y, w, h) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+  }
+
+  overlaps(range) {
+    return !(
+      range.x - range.w > this.x + this.w ||
+      range.x + range.w < this.x - this.w ||
+      range.y - range.h > this.y + this.h ||
+      range.y + range.h < this.y - this.h
+    );
+  }
+
+  contains(pheromone) {
+    return (
+      pheromone.position.x >= this.x - this.w &&
+      pheromone.position.x <= this.x + this.w &&
+      pheromone.position.y >= this.y - this.h &&
+      pheromone.position.y <= this.y + this.h
+    );
+  }
+}
+
+class QuadTree {
+  constructor(boundary, capacity) {
+    this.pheromones = [];
+    this.capacity = capacity;
+    this.subdivided = false;
+    this.boundary = boundary;
+  }
+
+  size() {
+    if (!this.subdivided) {
+      return this.pheromones.length;
+    }
+    return (
+      this.pheromones.length +
+      this.northWest.size() +
+      this.northEast.size() +
+      this.southWest.size() +
+      this.southEast.size()
+    );
+  }
+
+  query(range, found) {
+    if (!found) {
+      found = [];
+    }
+
+    if (!this.boundary.overlaps(range)) {
+      return found;
+    }
+    found.push(...this.pheromones);
+
+    if (this.subdivided) {
+      this.northEast.query(range, found);
+      this.northWest.query(range, found);
+      this.southEast.query(range, found);
+      this.southWest.query(range, found);
+    }
+  }
+}
