@@ -61,8 +61,8 @@ function setup() {
 
   graph = new Graph();
 
-  obstacles.push(new Obstacle(10, 10, 30, 30));
-  obstacles.push(new Obstacle(100, 200, 40, 30));
+  // obstacles.push(new Obstacle(10, 10, 30, 30));
+  // obstacles.push(new Obstacle(100, 200, 40, 30));
 
   smooth();
   rectMode(CENTER);
@@ -137,9 +137,9 @@ function draw() {
     rect(0, 0, width, height);
   }
 
-  obstacles.forEach((obstacle) => {
-    obstacle.display();
-  });
+  // obstacles.forEach((obstacle) => {
+  //   obstacle.display();
+  // });
 
   pheromones.forEach((pheromone) => {
     pheromone.update();
