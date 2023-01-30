@@ -725,5 +725,52 @@ class QuadTree {
       this.southEast.query(range, found);
       this.southWest.query(range, found);
     }
+    return found;
+  }
+
+  contains(point) {
+    return this.boundary.contains(point);
+  }
+
+  subdivide() {
+    this.subdivided = true;
+
+    let [x, y, w, h] = [
+      this.boundary.x,
+      this.boundary.y,
+      this.boundary.w / 2,
+      this.boundary.h / 2,
+    ];
+
+    let ne = new Boundary(x + w, y - h, w, h);
+    this.northEast = new QuadTree(ne, this.capacity);
+    let nw = new Rectangle(x - w, y - h, w, h);
+    this.northWest = new QuadTree(nw, this.capacity);
+    let se = new Rectangle(x + w, y + h, w, h);
+    this.southEast = new QuadTree(se, this.capacity);
+    let sw = new Rectangle(x - w, y + h, w, h);
+    this.southWest = new QuadTree(sw, this.capacity);
+  }
+
+  insert(point) {
+    if (!this.contains(point)) {
+      return false;
+    }
+
+    if (this.pheromones.length < this.capacity) {
+      this.pheromones.push(point);
+      return true;
+    } else {
+      if (!this.subdivided) {
+        this.subdivide();
+      }
+      return this.northWest.insert(point)
+        ? true
+        : this.northEast.insert(point)
+        ? true
+        : this.southEast.insert(point)
+        ? true
+        : this.southWest.insert(point);
+    }
   }
 }
