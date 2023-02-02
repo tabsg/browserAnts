@@ -29,6 +29,8 @@ var showVision = false;
 
 const buttons = [];
 
+let toHomePheromones;
+let toFoodPheromones;
 const pheromones = new Set();
 const maxPheromones = 300;
 
@@ -45,6 +47,15 @@ function setup() {
 
   home = new Home();
   noStroke();
+
+  toHomePheromones = new QuadTree(
+    new Boundary(width / 2, height / 2, width, height),
+    10
+  );
+  toFoodPheromones = new QuadTree(
+    new Boundary(width / 2, height / 2, width, height),
+    10
+  );
 
   for (let i = 0; i < antCount; i++) {
     ants.push(new Ant(home.location.x, home.location.y));
@@ -137,6 +148,10 @@ function draw() {
     rect(0, 0, width, height);
   }
 
+  toFoodPheromones.show();
+  toHomePheromones.show();
+  noStroke();
+
   // obstacles.forEach((obstacle) => {
   //   obstacle.display();
   // });
@@ -204,6 +219,9 @@ class Pheromone {
   update() {
     this.strength -= 0.02;
     if (this.strength <= 0.02) {
+      this.toFood
+        ? toFoodPheromones.remove(this.position.copy())
+        : toHomePheromones.remove(this.position.copy());
       pheromones.delete(this);
     }
   }
@@ -522,20 +540,29 @@ class Ant {
   }
 
   findClosePheromones(goingHome) {
-    let closePheromones = [];
-    pheromones.forEach((pheromone) => {
-      if (
-        this.position.dist(pheromone.position) < 2 * visibility &&
-        pheromone.toFood != goingHome
-      ) {
-        closePheromones.push(pheromone);
-      }
-    });
-    return closePheromones;
+    let closePheromones;
+    if (goingHome) {
+      return toHomePheromones.query(
+        new Boundary(
+          this.position.x,
+          this.position.y,
+          2 * visibility,
+          2 * visibility
+        )
+      );
+    }
+    return toFoodPheromones.query(
+      new Boundary(
+        this.position.x,
+        this.position.y,
+        2 * visibility,
+        2 * visibility
+      )
+    );
   }
 
   getAngleToPheromone(pheromone) {
-    let location = new p5.Vector(pheromone.position.x, pheromone.position.y);
+    let location = new p5.Vector(pheromone.x, pheromone.y);
     let pheromoneDirection = location.sub(this.position);
     return this.velocity.angleBetween(pheromoneDirection);
   }
@@ -565,6 +592,10 @@ class Ant {
 
   sensePheromones() {
     let closePheromones = this.findClosePheromones(this.goingHome);
+    if (closePheromones.size == 0) {
+      return;
+    }
+
     let strongestDirection = this.findStrongestDirection(closePheromones);
     if (strongestDirection == -1) {
       this.desiredDirection.rotate((-2 * visionAngle) / 3);
@@ -598,6 +629,12 @@ class Ant {
 
   releasePheromone() {
     if (frameCount % 3 == 0 && this.pheromoneCounter > 0) {
+      if (this.goingHome) {
+        toFoodPheromones.insert(this.position.copy());
+      } else {
+        toHomePheromones.insert(this.position.copy());
+      }
+
       pheromones.add(new Pheromone(this.goingHome, this.position.copy(), 1));
       this.pheromoneCounter--;
     }
@@ -680,28 +717,46 @@ class Boundary {
 
   contains(pheromone) {
     return (
-      pheromone.position.x >= this.x - this.w &&
-      pheromone.position.x <= this.x + this.w &&
-      pheromone.position.y >= this.y - this.h &&
-      pheromone.position.y <= this.y + this.h
+      pheromone.x >= this.x - this.w &&
+      pheromone.x <= this.x + this.w &&
+      pheromone.y >= this.y - this.h &&
+      pheromone.y <= this.y + this.h
     );
   }
 }
 
 class QuadTree {
   constructor(boundary, capacity) {
-    this.pheromones = [];
+    this.pheromones = new Set();
     this.capacity = capacity;
     this.subdivided = false;
     this.boundary = boundary;
   }
 
+  show() {
+    stroke(255);
+    noFill();
+    rectMode(CENTER);
+    rect(
+      this.boundary.x,
+      this.boundary.y,
+      this.boundary.w * 2,
+      this.boundary.h * 2
+    );
+    if (this.subdivided) {
+      this.northWest.show();
+      this.northEast.show();
+      this.southWest.show();
+      this.southEast.show();
+    }
+  }
+
   size() {
     if (!this.subdivided) {
-      return this.pheromones.length;
+      return this.pheromones.size;
     }
     return (
-      this.pheromones.length +
+      this.pheromones.size +
       this.northWest.size() +
       this.northEast.size() +
       this.southWest.size() +
@@ -711,13 +766,16 @@ class QuadTree {
 
   query(range, found) {
     if (!found) {
-      found = [];
+      found = new Set();
     }
 
     if (!this.boundary.overlaps(range)) {
       return found;
     }
-    found.push(...this.pheromones);
+
+    this.pheromones.forEach((pheromone) => {
+      found.add(pheromone);
+    });
 
     if (this.subdivided) {
       this.northEast.query(range, found);
@@ -744,11 +802,11 @@ class QuadTree {
 
     let ne = new Boundary(x + w, y - h, w, h);
     this.northEast = new QuadTree(ne, this.capacity);
-    let nw = new Rectangle(x - w, y - h, w, h);
+    let nw = new Boundary(x - w, y - h, w, h);
     this.northWest = new QuadTree(nw, this.capacity);
-    let se = new Rectangle(x + w, y + h, w, h);
+    let se = new Boundary(x + w, y + h, w, h);
     this.southEast = new QuadTree(se, this.capacity);
-    let sw = new Rectangle(x - w, y + h, w, h);
+    let sw = new Boundary(x - w, y + h, w, h);
     this.southWest = new QuadTree(sw, this.capacity);
   }
 
@@ -757,20 +815,52 @@ class QuadTree {
       return false;
     }
 
-    if (this.pheromones.length < this.capacity) {
-      this.pheromones.push(point);
+    if (this.pheromones.size < this.capacity) {
+      this.pheromones.add(String(point.x) + "," + String(point.y));
       return true;
     } else {
       if (!this.subdivided) {
         this.subdivide();
       }
-      return this.northWest.insert(point)
-        ? true
-        : this.northEast.insert(point)
-        ? true
-        : this.southEast.insert(point)
+      return (
+        (this.northWest.insert(point) ? true : this.northEast.insert(point))
+          ? true
+          : this.southEast.insert(point)
+      )
         ? true
         : this.southWest.insert(point);
     }
+  }
+
+  remove(point) {
+    if (!point) {
+      return false;
+    }
+    if (!this.contains(point)) {
+      return false;
+    }
+
+    if (this.pheromones.has(String(point.x) + "," + String(point.y))) {
+      this.pheromones.delete(String(point.x) + "," + String(point.y));
+    }
+
+    if (this.subdivided) {
+      if (this.size() <= this.capacity) {
+        this.subdivided = false;
+        this.pheromones = this.query(this.boundary);
+        this.northWest = null;
+        this.northEast = null;
+        this.southEast = null;
+        this.southWest = null;
+      } else
+        return (
+          (this.northWest.remove(point) ? true : this.northEast.remove(point))
+            ? true
+            : this.southEast.remove(point)
+        )
+          ? true
+          : this.southWest.remove(point);
+    }
+    return true;
   }
 }
