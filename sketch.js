@@ -2,22 +2,22 @@ const trail = 1;
 const border = 30;
 const steeringCorrection = 1;
 var antCount = 200;
-var visibility = 50;
+var visibility = 100;
 const visionAngle = Math.PI / 3;
 
 var home = null;
 
 const foodCentres = 5;
 const foodPerCentre = 200;
-const foodCount = foodCentres * foodPerCentre;
-const foodSpread = 20;
+var foodCount = foodCentres * foodPerCentre;
+const foodSpread = 40;
 var eatenFood = 0;
 const foodRange = 5;
-const ants = [];
-const food = new Set();
+var ants;
+var food;
 
-const width = 400;
-const height = 400;
+const width = 500;
+const height = 600;
 
 const graphHeight = 100;
 var graph = null;
@@ -31,10 +31,14 @@ const buttons = [];
 
 let toHomePheromones;
 let toFoodPheromones;
-const pheromones = new Set();
+var pheromones;
 const maxPheromones = 300;
 
-const obstacles = [];
+var obstacles;
+const obstacleCount = 3;
+var noObstacles;
+
+var currFrames = 0;
 
 function preload() {
   // collectSound = loadSound("assets/collect.mp3");
@@ -45,41 +49,87 @@ function setup() {
   createCanvas(width + 1.5 * graphHeight, height + graphHeight);
   fill(223, 243, 228);
 
+  noObstacles = [];
+
   home = new Home();
+  noObstacles[0] = home.location;
   noStroke();
 
   toHomePheromones = new QuadTree(
     new Boundary(width / 2, height / 2, width, height),
-    10
+    5
   );
   toFoodPheromones = new QuadTree(
     new Boundary(width / 2, height / 2, width, height),
-    10
+    5
   );
 
+  ants = [];
   for (let i = 0; i < antCount; i++) {
     ants.push(new Ant(home.location.x, home.location.y));
   }
 
+  food = new Set();
   for (let j = 0; j < foodCentres; j++) {
-    let x = Math.random() * (width - 2 * border) + border;
-    let y = Math.random() * (height - 2 * border) + border;
-    let centre = new p5.Vector(x, y);
-    for (let k = 0; k < foodPerCentre; k++) {
-      food.add(new Food(centre));
-    }
+    newFoodCentre();
   }
 
   graph = new Graph();
 
-  // obstacles.push(new Obstacle(10, 10, 30, 30));
-  // obstacles.push(new Obstacle(100, 200, 40, 30));
+  obstacles = [];
+  // for (let k = 0; k < obstacleCount; k++) {
+  //   let proposed = generateLocation();
+  //   while (!checkObstacleLocation(noObstacles, proposed)) {
+  //     proposed = generateLocation();
+  //   }
+  //   noObstacles.push(proposed);
+  //   let w = Math.round(Math.random() * 50 + 20);
+  //   let h = Math.round(Math.random() * 50 + 20);
+  //   obstacles.push(new Obstacle(proposed.x, proposed.y, w, h));
+  // }
+
+  pheromones = new Set();
 
   smooth();
   rectMode(CENTER);
   frameRate(24);
 
   createButtons();
+}
+
+function newFoodCentre() {
+  foodCount += foodPerCentre;
+  let centre = generateLocation();
+  while (centre.dist(home.location) < 150) {
+    centre = generateLocation();
+  }
+  for (let k = 0; k < foodPerCentre; k++) {
+    food.add(new Food(centre));
+  }
+}
+
+function mouseClicked() {
+  let x = mouseX;
+  let y = mouseY;
+  if (x < width && y < height) {
+    obstacles.push(new Obstacle(x, y, 40, 40));
+  }
+}
+
+function generateLocation() {
+  let x = Math.random() * (width - 2 * border) + border;
+  let y = Math.random() * (height - 2 * border) + border;
+  return new p5.Vector(x, y);
+}
+
+function checkObstacleLocation(noObstacles, proposed) {
+  print(noObstacles);
+  noObstacles.forEach((location) => {
+    if (proposed.dist(location) < 100) {
+      return false;
+    }
+  });
+  return true;
 }
 
 function createButtons() {
@@ -122,16 +172,20 @@ function draw() {
   toHomePheromones.show();
   noStroke();
 
-  // obstacles.forEach((obstacle) => {
-  //   obstacle.display();
-  // });
+  obstacles.forEach((obstacle) => {
+    obstacle.display();
+  });
 
   pheromones.forEach((pheromone) => {
     pheromone.update();
     pheromone.display();
   });
 
-  text(int(getFrameRate()), width + 10, height + 10);
+  if (frameCount % 12 == 0) {
+    currFrames = int(getFrameRate());
+  }
+  fill(0);
+  text(currFrames, width + 10, height + 10);
 
   ants.forEach((ant) => {
     ant.update();
@@ -187,20 +241,22 @@ class Pheromone {
   }
 
   update() {
-    this.strength -= 0.03;
-    if (this.strength <= 0.03) {
-      this.toFood
-        ? toFoodPheromones.remove(this.position.copy())
-        : toHomePheromones.remove(this.position.copy());
+    this.strength -= 0.01;
+    if (this.strength <= 0.02) {
+      if (this.toFood) {
+        toFoodPheromones.remove(this.position.copy());
+      } else {
+        toHomePheromones.remove(this.position.copy());
+      }
       pheromones.delete(this);
     }
   }
 
   display() {
     if (this.toFood) {
-      fill("rgba(92, 128, 1," + this.strength + ")");
+      fill("rgba(250, 102, 241," + this.strength + ")");
     } else {
-      fill("rgba(255, 147, 79," + this.strength + ")");
+      fill("rgba(57, 143, 249," + this.strength + ")");
     }
     ellipse(this.position.x, this.position.y, 3);
   }
@@ -208,9 +264,9 @@ class Pheromone {
 
 class Home {
   constructor() {
-    //let x = Math.random() * (width - 2 * border) + border;
-    //let y = Math.random() * (height - 2 * border) + border;
-    this.location = new p5.Vector(300, 300);
+    let x = Math.random() * (width - 2 * border) + border;
+    let y = Math.random() * (height - 2 * border) + border;
+    this.location = new p5.Vector(x, y);
     this.foodCollected = 0;
   }
 
@@ -220,7 +276,7 @@ class Home {
     ellipse(this.location.x, this.location.y, 50);
     fill(0, 0, 0);
     textFont("Arial Black");
-    text(this.foodCollected, this.location.x - 4, this.location.y + 4);
+    text(this.foodCollected, this.location.x - 8, this.location.y + 4);
   }
 
   receiveFood() {
@@ -246,7 +302,7 @@ class Graph {
 
     let graphWidth = min(width, frameCount);
     if (frameCount % 5 == 0) {
-      this.frameValues.push((graphHeight * eatenFood) / foodCount);
+      this.frameValues.push((eatenFood * graphHeight) / foodCount);
     }
     for (let frame = 0; frame <= graphWidth; frame++) {
       this.displayBar(
@@ -301,6 +357,10 @@ class Food {
     eatenFood++;
     food.delete(this);
     // collectSound.play();
+
+    if (eatenFood % foodPerCentre == 0) {
+      newFoodCentre();
+    }
   }
 }
 class Ant {
@@ -388,8 +448,8 @@ class Ant {
     arc(
       0,
       -5,
-      2 * visibility,
-      2 * visibility,
+      visibility,
+      visibility,
       -visionAngle / 2 - Math.PI / 2,
       visionAngle / 2 - Math.PI / 2,
       PIE
@@ -414,19 +474,19 @@ class Ant {
 
     if (pos.x < border) {
       this.position.x = border;
-      this.turnAround();
+      this.quarterTurn();
     }
     if (pos.x > width - border) {
       this.position.x = width - border;
-      this.turnAround();
+      this.quarterTurn();
     }
     if (pos.y < border) {
       this.position.y = border;
-      this.turnAround();
+      this.quarterTurn();
     }
     if (pos.y > height - border) {
       this.position.y = height - border;
-      this.turnAround();
+      this.quarterTurn();
     }
   }
 
@@ -513,10 +573,11 @@ class Ant {
     let insideSquare;
     let squareBoundary = new Boundary(
       this.position.x,
-      this.position.y + visibility / 2,
-      visibility / 2,
-      visibility / 2
+      this.position.y,
+      visibility * 0.6,
+      visibility * 0.6
     );
+    // squareBoundary.show();
     if (goingHome) {
       insideSquare = toHomePheromones.query(squareBoundary);
     } else {
@@ -542,11 +603,11 @@ class Ant {
     closePheromones.forEach((pheromone) => {
       let angle = this.getAngleToPheromone(pheromone);
       if (angle > -visionAngle && angle <= -visionAngle / 3) {
-        left += pheromone.strength;
+        left += 1;
       } else if (angle > -visionAngle / 3 && angle <= visionAngle / 3) {
-        centre += pheromone.strength;
+        centre += 1;
       } else if (angle > visionAngle / 3 && angle < visionAngle) {
-        right += pheromone.strength;
+        right += 1;
       }
     });
     if (left > centre && left > right) {
@@ -587,16 +648,13 @@ class Ant {
       .limit(this.maxSpeed);
 
     this.position = this.position.add(this.velocity.mult(this.deltaTime));
-    this.position = new p5.Vector(
-      (this.position.x + width) % width,
-      (this.position.y + height) % height
-    );
+    this.position = new p5.Vector(this.position.x, this.position.y);
 
     this.angle = Math.atan2(this.velocity.y, this.velocity.x) + Math.PI / 2;
   }
 
   releasePheromone() {
-    if (frameCount % 3 == 0 && this.pheromoneCounter > 0) {
+    if (frameCount % 5 == 0 && this.pheromoneCounter > 0) {
       if (this.goingHome) {
         toFoodPheromones.insert(this.position.copy());
       } else {
@@ -635,7 +693,7 @@ class Ant {
       } else if (this.position.y > bottomEdge) {
         this.position.y += repel;
       }
-      this.turnAround();
+      this.quarterTurn();
     }
   }
 
@@ -650,17 +708,19 @@ class Ant {
   update() {
     this.wander();
     if (hungry) {
-      this.sensePheromones();
+      if (Math.random() < 0.5) {
+        this.sensePheromones();
+      }
       if (this.goingHome) {
         this.findHome();
       } else {
         this.beHungry();
       }
     }
-    this.checkObstacles();
 
     let acceleration = this.getAcceleration();
     this.keepInsideBox();
+    this.checkObstacles();
     this.updatePosition(acceleration);
     this.releasePheromone();
   }
@@ -672,6 +732,13 @@ class Boundary {
     this.y = y;
     this.w = w;
     this.h = h;
+  }
+
+  show() {
+    stroke(0);
+    noFill();
+    rectMode(CENTER);
+    rect(this.x, this.y, this.w * 2, this.h * 2);
   }
 
   overlaps(range) {
@@ -702,7 +769,7 @@ class QuadTree {
   }
 
   show() {
-    stroke(255);
+    stroke(108, 75, 94, 10);
     noFill();
     rectMode(CENTER);
     rect(
