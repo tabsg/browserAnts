@@ -1,7 +1,7 @@
 const trail = 1;
 const border = 30;
 const steeringCorrection = 1;
-var antCount = 150;
+var antCount = 200;
 var visibility = 50;
 const visionAngle = Math.PI / 3;
 
@@ -217,8 +217,8 @@ class Pheromone {
   }
 
   update() {
-    this.strength -= 0.02;
-    if (this.strength <= 0.02) {
+    this.strength -= 0.03;
+    if (this.strength <= 0.03) {
       this.toFood
         ? toFoodPheromones.remove(this.position.copy())
         : toHomePheromones.remove(this.position.copy());
@@ -417,9 +417,9 @@ class Ant {
     fill("rgba(235, 179, 169,0.5)");
     arc(
       0,
-      0,
-      visibility,
-      visibility,
+      -5,
+      2 * visibility,
+      2 * visibility,
       -visionAngle / 2 - Math.PI / 2,
       visionAngle / 2 - Math.PI / 2,
       PIE
@@ -496,7 +496,7 @@ class Ant {
   }
 
   findHome() {
-    if (home.location.dist(this.position) < visibility) {
+    if (home.location.dist(this.position) < visibility * 1.5) {
       let target = home.location.copy();
       this.desiredDirection = target.sub(this.position).normalize();
       if (home.location.dist(this.position) < foodRange) {
@@ -540,29 +540,27 @@ class Ant {
   }
 
   findClosePheromones(goingHome) {
-    let closePheromones;
+    let insideSquare;
+    let squareBoundary = new Boundary(
+      this.position.x,
+      this.position.y + visibility / 2,
+      visibility / 2,
+      visibility / 2
+    );
     if (goingHome) {
-      return toHomePheromones.query(
-        new Boundary(
-          this.position.x,
-          this.position.y,
-          2 * visibility,
-          2 * visibility
-        )
-      );
+      insideSquare = toHomePheromones.query(squareBoundary);
+    } else {
+      insideSquare = toFoodPheromones.query(squareBoundary);
     }
-    return toFoodPheromones.query(
-      new Boundary(
-        this.position.x,
-        this.position.y,
-        2 * visibility,
-        2 * visibility
-      )
+    return insideSquare.filter(
+      (pheromone) =>
+        this.position.dist(new p5.Vector(pheromone[0], pheromone[1])) <
+        visibility
     );
   }
 
   getAngleToPheromone(pheromone) {
-    let location = new p5.Vector(pheromone.x, pheromone.y);
+    let location = new p5.Vector(pheromone[0], pheromone[1]);
     let pheromoneDirection = location.sub(this.position);
     return this.velocity.angleBetween(pheromoneDirection);
   }
@@ -583,16 +581,16 @@ class Ant {
     });
     if (left > centre && left > right) {
       return -1;
-    } else if (centre >= right) {
-      return 0;
-    } else {
+    } else if (right >= centre) {
       return 1;
+    } else {
+      return 0;
     }
   }
 
   sensePheromones() {
     let closePheromones = this.findClosePheromones(this.goingHome);
-    if (closePheromones.size == 0) {
+    if (closePheromones.length == 0) {
       return;
     }
 
@@ -766,7 +764,7 @@ class QuadTree {
 
   query(range, found) {
     if (!found) {
-      found = new Set();
+      found = [];
     }
 
     if (!this.boundary.overlaps(range)) {
@@ -774,7 +772,8 @@ class QuadTree {
     }
 
     this.pheromones.forEach((pheromone) => {
-      found.add(pheromone);
+      let pheromoneList = pheromone.split(",").map(Number);
+      found.push(pheromoneList);
     });
 
     if (this.subdivided) {
@@ -847,7 +846,11 @@ class QuadTree {
     if (this.subdivided) {
       if (this.size() <= this.capacity) {
         this.subdivided = false;
-        this.pheromones = this.query(this.boundary);
+        let newPheromones = this.query(this.boundary);
+        this.pheromones = new Set();
+        newPheromones.forEach((pheromone) =>
+          this.pheromones.add(String(pheromone[0]) + "," + String(pheromone[1]))
+        );
         this.northWest = null;
         this.northEast = null;
         this.southEast = null;
