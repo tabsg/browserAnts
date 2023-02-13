@@ -1,7 +1,7 @@
 const trail = 1;
 const border = 30;
 const steeringCorrection = 1;
-var antCount = 150;
+var antCount = 200;
 var visibility = 50;
 const visionAngle = Math.PI / 3;
 
@@ -29,6 +29,8 @@ var showVision = false;
 
 const buttons = [];
 
+let toHomePheromones;
+let toFoodPheromones;
 const pheromones = new Set();
 const maxPheromones = 300;
 
@@ -54,6 +56,15 @@ function setup() {
   // let importantLocations = new Set();
   // importantLocations.add(home.location);
 
+  toHomePheromones = new QuadTree(
+    new Boundary(width / 2, height / 2, width, height),
+    10
+  );
+  toFoodPheromones = new QuadTree(
+    new Boundary(width / 2, height / 2, width, height),
+    10
+  );
+
   for (let i = 0; i < antCount; i++) {
     ants.push(new Ant(home.location.x, home.location.y));
   }
@@ -69,6 +80,10 @@ function setup() {
   }
 
   graph = new Graph();
+
+
+  // obstacles.push(new Obstacle(10, 10, 30, 30));
+  // obstacles.push(new Obstacle(100, 200, 40, 30));
 
   for (let k = 0; k < foodCentres; k++) {
     let x = Math.random() * (width - 2 * border) + border;
@@ -87,6 +102,7 @@ function setup() {
     }
   }
 
+
   smooth();
   rectMode(CENTER);
   frameRate(24);
@@ -104,6 +120,12 @@ function draw() {
     rect(0, 0, width, height);
   }
 
+
+  toFoodPheromones.show();
+  toHomePheromones.show();
+  noStroke();
+
+ 
   if (obstaclesPresent) {
     obstacles.forEach((obstacle) => {
       obstacle.display();
@@ -112,6 +134,7 @@ function draw() {
 
   updateGrids();
   displayGrids();
+
 
   pheromones.forEach((pheromone) => {
     pheromone.update();
@@ -229,8 +252,11 @@ class Pheromone {
   }
 
   update() {
-    this.strength -= 0.02;
-    if (this.strength <= 0.02) {
+    this.strength -= 0.03;
+    if (this.strength <= 0.03) {
+      this.toFood
+        ? toFoodPheromones.remove(this.position.copy())
+        : toHomePheromones.remove(this.position.copy());
       pheromones.delete(this);
     }
   }
@@ -424,9 +450,9 @@ class Ant {
     fill("rgba(235, 179, 169,0.5)");
     arc(
       0,
-      0,
-      visibility,
-      visibility,
+      -5,
+      2 * visibility,
+      2 * visibility,
       -visionAngle / 2 - Math.PI / 2,
       visionAngle / 2 - Math.PI / 2,
       PIE
@@ -503,7 +529,7 @@ class Ant {
   }
 
   findHome() {
-    if (home.location.dist(this.position) < visibility) {
+    if (home.location.dist(this.position) < visibility * 1.5) {
       let target = home.location.copy();
       this.desiredDirection = target.sub(this.position).normalize();
       if (home.location.dist(this.position) < foodRange) {
@@ -546,8 +572,30 @@ class Ant {
     this.desiredDirection = new p5.Vector(-this.velocity.x, -this.velocity.y);
   }
 
+
+  findClosePheromones(goingHome) {
+    let insideSquare;
+    let squareBoundary = new Boundary(
+      this.position.x,
+      this.position.y + visibility / 2,
+      visibility / 2,
+      visibility / 2
+    );
+    if (goingHome) {
+      insideSquare = toHomePheromones.query(squareBoundary);
+    } else {
+      insideSquare = toFoodPheromones.query(squareBoundary);
+    }
+    return insideSquare.filter(
+      (pheromone) =>
+        this.position.dist(new p5.Vector(pheromone[0], pheromone[1])) <
+        visibility
+    );
+  }
+
+
   getAngleToPheromone(pheromone) {
-    let location = new p5.Vector(pheromone.position.x, pheromone.position.y);
+    let location = new p5.Vector(pheromone[0], pheromone[1]);
     let pheromoneDirection = location.sub(this.position);
     return this.velocity.angleBetween(pheromoneDirection);
   }
@@ -574,56 +622,22 @@ class Ant {
 
     if (left > centre && left > right) {
       return -1;
-    } else if (centre >= right) {
-      return 0;
-    } else {
+    } else if (right >= centre) {
       return 1;
+    } else {
+      return 0;
     }
   }
 
   sensePheromones() {
-    // even rows
-    let evenNeighbours = [
-      [+1, -1],
-      [+1, 0],
-      [+1, +1],
-      [0, +1],
-      [-1, 0],
-      [0, -1],
-    ];
-    // odd rows
-    let oddNeighbours = [
-      [0, -1],
-      [+1, 0],
-      [0, +1],
-      [-1, +1],
-      [-1, 0],
-      [-1, -1],
-    ];
 
-    let curr = cartesianToHex(this.position.x, this.position.y);
-    let q = curr[0];
-    let r = curr[1];
-    let direction = Math.round((this.angle * 6) / (2 * PI));
-
-    let neighbours = [];
-    if (r % 2 == 0) {
-      neighbours = evenNeighbours;
-    } else {
-      neighbours = oddNeighbours;
+    let closePheromones = this.findClosePheromones(this.goingHome);
+    if (closePheromones.length == 0) {
+      return;
     }
 
-    let visibleNeighbours = [
-      neighbours[(direction + 5) % 6],
-      neighbours[(direction + 6) % 6],
-      neighbours[(direction + 7) % 6],
-    ];
+    let strongestDirection = this.findStrongestDirection(closePheromones);
 
-    let strongestDirection = this.findStrongestDirection(
-      q + Math.round(r / 2),
-      r,
-      visibleNeighbours
-    );
     if (strongestDirection == -1) {
       this.desiredDirection.rotate((-2 * visionAngle) / 3);
     } else if (strongestDirection == 1) {
@@ -655,22 +669,17 @@ class Ant {
   }
 
   releasePheromone() {
-    if (this.pheromoneCounter > 0) {
-      // pheromones.add(new Pheromone(this.goingHome, this.position.copy(), 1));
-      let qr = cartesianToHex(this.position.x, this.position.y);
-      let q = qr[0];
-      let r = qr[1];
+
+    if (frameCount % 3 == 0 && this.pheromoneCounter > 0) {
       if (this.goingHome) {
-        toFoodGrid[r][q + Math.floor(r / 2)] = Math.min(
-          toFoodGrid[r][q + Math.floor(r / 2)] + 4,
-          125
-        );
+        toFoodPheromones.insert(this.position.copy());
       } else {
-        toHomeGrid[r][q + Math.floor(r / 2)] = Math.min(
-          toHomeGrid[r][q + Math.floor(r / 2)] + 4,
-          125
-        );
+        toHomePheromones.insert(this.position.copy());
       }
+
+      pheromones.add(new Pheromone(this.goingHome, this.position.copy(), 1));
+
+
       this.pheromoneCounter--;
     }
   }
@@ -735,6 +744,178 @@ class Ant {
   }
 }
 
+
+class Boundary {
+  constructor(x, y, w, h) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+  }
+
+  overlaps(range) {
+    return !(
+      range.x - range.w > this.x + this.w ||
+      range.x + range.w < this.x - this.w ||
+      range.y - range.h > this.y + this.h ||
+      range.y + range.h < this.y - this.h
+    );
+  }
+
+  contains(pheromone) {
+    return (
+      pheromone.x >= this.x - this.w &&
+      pheromone.x <= this.x + this.w &&
+      pheromone.y >= this.y - this.h &&
+      pheromone.y <= this.y + this.h
+    );
+  }
+}
+
+class QuadTree {
+  constructor(boundary, capacity) {
+    this.pheromones = new Set();
+    this.capacity = capacity;
+    this.subdivided = false;
+    this.boundary = boundary;
+  }
+
+  show() {
+    stroke(255);
+    noFill();
+    rectMode(CENTER);
+    rect(
+      this.boundary.x,
+      this.boundary.y,
+      this.boundary.w * 2,
+      this.boundary.h * 2
+    );
+    if (this.subdivided) {
+      this.northWest.show();
+      this.northEast.show();
+      this.southWest.show();
+      this.southEast.show();
+    }
+  }
+
+  size() {
+    if (!this.subdivided) {
+      return this.pheromones.size;
+    }
+    return (
+      this.pheromones.size +
+      this.northWest.size() +
+      this.northEast.size() +
+      this.southWest.size() +
+      this.southEast.size()
+    );
+  }
+
+  query(range, found) {
+    if (!found) {
+      found = [];
+    }
+
+    if (!this.boundary.overlaps(range)) {
+      return found;
+    }
+
+    this.pheromones.forEach((pheromone) => {
+      let pheromoneList = pheromone.split(",").map(Number);
+      found.push(pheromoneList);
+    });
+
+    if (this.subdivided) {
+      this.northEast.query(range, found);
+      this.northWest.query(range, found);
+      this.southEast.query(range, found);
+      this.southWest.query(range, found);
+    }
+    return found;
+  }
+
+  contains(point) {
+    return this.boundary.contains(point);
+  }
+
+  subdivide() {
+    this.subdivided = true;
+
+    let [x, y, w, h] = [
+      this.boundary.x,
+      this.boundary.y,
+      this.boundary.w / 2,
+      this.boundary.h / 2,
+    ];
+
+    let ne = new Boundary(x + w, y - h, w, h);
+    this.northEast = new QuadTree(ne, this.capacity);
+    let nw = new Boundary(x - w, y - h, w, h);
+    this.northWest = new QuadTree(nw, this.capacity);
+    let se = new Boundary(x + w, y + h, w, h);
+    this.southEast = new QuadTree(se, this.capacity);
+    let sw = new Boundary(x - w, y + h, w, h);
+    this.southWest = new QuadTree(sw, this.capacity);
+  }
+
+  insert(point) {
+    if (!this.contains(point)) {
+      return false;
+    }
+
+    if (this.pheromones.size < this.capacity) {
+      this.pheromones.add(String(point.x) + "," + String(point.y));
+      return true;
+    } else {
+      if (!this.subdivided) {
+        this.subdivide();
+      }
+      return (
+        (this.northWest.insert(point) ? true : this.northEast.insert(point))
+          ? true
+          : this.southEast.insert(point)
+      )
+        ? true
+        : this.southWest.insert(point);
+    }
+  }
+
+  remove(point) {
+    if (!point) {
+      return false;
+    }
+    if (!this.contains(point)) {
+      return false;
+    }
+
+    if (this.pheromones.has(String(point.x) + "," + String(point.y))) {
+      this.pheromones.delete(String(point.x) + "," + String(point.y));
+    }
+
+    if (this.subdivided) {
+      if (this.size() <= this.capacity) {
+        this.subdivided = false;
+        let newPheromones = this.query(this.boundary);
+        this.pheromones = new Set();
+        newPheromones.forEach((pheromone) =>
+          this.pheromones.add(String(pheromone[0]) + "," + String(pheromone[1]))
+        );
+        this.northWest = null;
+        this.northEast = null;
+        this.southEast = null;
+        this.southWest = null;
+      } else
+        return (
+          (this.northWest.remove(point) ? true : this.northEast.remove(point))
+            ? true
+            : this.southEast.remove(point)
+        )
+          ? true
+          : this.southWest.remove(point);
+    }
+    return true;
+  }
+
 function createButtons() {
   let buttonNames = [
     "show vision",
@@ -797,4 +978,5 @@ function increaseVisibility() {
 
 function decreaseVisibility() {
   visibility -= 10;
+
 }
