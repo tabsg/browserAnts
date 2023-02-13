@@ -35,6 +35,12 @@ const pheromones = new Set();
 const maxPheromones = 300;
 
 const obstacles = [];
+const obstacleCount = 3;
+var obstaclesPresent = false;
+
+var gridSize = 15;
+const toFoodGrid = [];
+const toHomeGrid = [];
 
 function preload() {
   // collectSound = loadSound("assets/collect.mp3");
@@ -46,7 +52,9 @@ function setup() {
   fill(223, 243, 228);
 
   home = new Home();
-  noStroke();
+
+  // let importantLocations = new Set();
+  // importantLocations.add(home.location);
 
   toHomePheromones = new QuadTree(
     new Boundary(width / 2, height / 2, width, height),
@@ -65,6 +73,7 @@ function setup() {
     let x = Math.random() * (width - 2 * border) + border;
     let y = Math.random() * (height - 2 * border) + border;
     let centre = new p5.Vector(x, y);
+
     for (let k = 0; k < foodPerCentre; k++) {
       food.add(new Food(centre));
     }
@@ -72,8 +81,27 @@ function setup() {
 
   graph = new Graph();
 
+
   // obstacles.push(new Obstacle(10, 10, 30, 30));
   // obstacles.push(new Obstacle(100, 200, 40, 30));
+
+  for (let k = 0; k < foodCentres; k++) {
+    let x = Math.random() * (width - 2 * border) + border;
+    let y = Math.random() * (height - 2 * border) + border;
+    let w = (Math.random() * width) / 5 + 10;
+    let h = (Math.random() * height) / 5 + 10;
+    obstacles.push(new Obstacle(x, y, w, h));
+  }
+
+  for (let row = 0; row < height / gridSize; row++) {
+    toFoodGrid.push([]);
+    toHomeGrid.push([]);
+    for (let col = 0; col < width / gridSize; col++) {
+      toFoodGrid[row].push(0);
+      toHomeGrid[row].push(0);
+    }
+  }
+
 
   smooth();
   rectMode(CENTER);
@@ -82,65 +110,9 @@ function setup() {
   createButtons();
 }
 
-function createButtons() {
-  let buttonNames = [
-    "show vision",
-    "see coverage",
-    "be hungry",
-    "add ant",
-    "remove ant",
-    "increase visibility",
-    "decrease visibility",
-  ];
-  let buttonFunctions = [
-    toggleShowVision,
-    toggleSeeCoverage,
-    toggleBeHungry,
-    addAnt,
-    removeAnt,
-    increaseVisibility,
-    decreaseVisibility,
-  ];
-  for (let i = 0; i < buttonNames.length; i++) {
-    let buttonName = buttonNames[i];
-    let button = createButton(buttonName);
-    button.position(width, 60 * i);
-    button.mousePressed(buttonFunctions[i]);
-    buttons.push(i);
-  }
-}
-
-function toggleShowVision() {
-  showVision = !showVision;
-}
-
-function toggleSeeCoverage() {
-  seeCoverage = !seeCoverage;
-}
-
-function toggleBeHungry() {
-  hungry = !hungry;
-}
-
-function addAnt() {
-  ants.push(new Ant(home.location.x, home.location.y));
-  antCount++;
-}
-
-function removeAnt() {
-  ants.splice(0, 1);
-  antCount--;
-}
-
-function increaseVisibility() {
-  visibility += 10;
-}
-
-function decreaseVisibility() {
-  visibility -= 10;
-}
-
 function draw() {
+  noStroke();
+
   if (!seeCoverage) {
     background(108, 75, 94);
     fill(223, 243, 228);
@@ -148,13 +120,21 @@ function draw() {
     rect(0, 0, width, height);
   }
 
+
   toFoodPheromones.show();
   toHomePheromones.show();
   noStroke();
 
-  // obstacles.forEach((obstacle) => {
-  //   obstacle.display();
-  // });
+ 
+  if (obstaclesPresent) {
+    obstacles.forEach((obstacle) => {
+      obstacle.display();
+    });
+  }
+
+  updateGrids();
+  displayGrids();
+
 
   pheromones.forEach((pheromone) => {
     pheromone.update();
@@ -181,6 +161,61 @@ function draw() {
   }
 
   home.display();
+}
+
+function drawHexagon(x, y, r) {
+  beginShape();
+  for (let a = 0; a < TAU; a += TAU / 6) {
+    vertex(x + r * sin(a), y + r * cos(a));
+  }
+  endShape(CLOSE);
+}
+
+function updateGrids() {
+  for (let row = 0; row < height / gridSize; row++) {
+    for (let col = 0; col < width / gridSize; col++) {
+      toFoodGrid[row][col] = Math.max(toFoodGrid[row][col] - 1.5, 0);
+      toHomeGrid[row][col] = Math.max(toHomeGrid[row][col] - 1.5, 0);
+    }
+  }
+}
+
+function axial_round(x, y) {
+  const xgrid = Math.round(x),
+    ygrid = Math.round(y);
+  (x -= xgrid), (y -= ygrid); // remainder
+  const dx = Math.round(x + 0.5 * y) * (x * x >= y * y);
+  const dy = Math.round(y + 0.5 * x) * (x * x < y * y);
+  return [xgrid + dx, ygrid + dy];
+}
+
+function cartesianToHex(x, y) {
+  var q = ((Math.sqrt(3) / 3) * x - (1 / 3) * y) / gridSize;
+  var r = ((2 / 3) * y) / gridSize;
+  return axial_round(q, r);
+}
+
+function displayGrids() {
+  count = 0;
+  for (x = gridSize; x < width - gridSize; x += gridSize / 2.3) {
+    for (y = gridSize; y < height - gridSize; y += gridSize * 1.5) {
+      let qr = cartesianToHex(x, y);
+      let q = qr[0];
+      let r = qr[1];
+      let toFood = toFoodGrid[r][q + Math.round(r / 2)];
+      let toHome = toHomeGrid[r][q + Math.round(r / 2)];
+      // if (toFood > toHome) {
+      //   fill(92, 128, 1, toFood);
+      // } else {
+      //   fill(255, 147, 79, toHome);
+      // }
+      fill(250, 102, 241, toFood);
+      drawHexagon(x, y + gridSize * (count % 2 == 0) * 0.75, gridSize / 2);
+      fill(57, 143, 249, toHome);
+      drawHexagon(x, y + gridSize * (count % 2 == 0) * 0.75, gridSize / 2);
+    }
+    count++;
+  }
 }
 
 class Obstacle {
@@ -245,7 +280,6 @@ class Home {
   }
 
   display() {
-    noStroke();
     fill(89, 149, 237);
     ellipse(this.location.x, this.location.y, 50);
     fill(0, 0, 0);
@@ -320,7 +354,6 @@ class Food {
 
   display() {
     if (!this.eaten) {
-      noStroke();
       fill(232, 126, 161);
       ellipse(this.position.x, this.position.y, 5);
     }
@@ -539,6 +572,7 @@ class Ant {
     this.desiredDirection = new p5.Vector(-this.velocity.x, -this.velocity.y);
   }
 
+
   findClosePheromones(goingHome) {
     let insideSquare;
     let squareBoundary = new Boundary(
@@ -559,26 +593,33 @@ class Ant {
     );
   }
 
+
   getAngleToPheromone(pheromone) {
     let location = new p5.Vector(pheromone[0], pheromone[1]);
     let pheromoneDirection = location.sub(this.position);
     return this.velocity.angleBetween(pheromoneDirection);
   }
 
-  findStrongestDirection(closePheromones) {
-    let left = 0;
-    let centre = 0;
-    let right = 0;
-    closePheromones.forEach((pheromone) => {
-      let angle = this.getAngleToPheromone(pheromone);
-      if (angle > -visionAngle && angle <= -visionAngle / 3) {
-        left += pheromone.strength;
-      } else if (angle > -visionAngle / 3 && angle <= visionAngle / 3) {
-        centre += pheromone.strength;
-      } else if (angle > visionAngle / 3 && angle < visionAngle) {
-        right += pheromone.strength;
-      }
-    });
+  findStrongestDirection(q, r, visibleNeighbours) {
+    let left;
+    let centre;
+    let right;
+    if (this.goingHome) {
+      left =
+        toHomeGrid[r + visibleNeighbours[0][1]][q + visibleNeighbours[0][0]];
+      centre =
+        toHomeGrid[r + visibleNeighbours[1][1]][q + visibleNeighbours[1][0]];
+      right =
+        toHomeGrid[r + visibleNeighbours[2][1]][q + visibleNeighbours[2][0]];
+    } else {
+      left =
+        toFoodGrid[r + visibleNeighbours[0][1]][q + visibleNeighbours[0][0]];
+      centre =
+        toFoodGrid[r + visibleNeighbours[1][1]][q + visibleNeighbours[1][0]];
+      right =
+        toFoodGrid[r + visibleNeighbours[2][1]][q + visibleNeighbours[2][0]];
+    }
+
     if (left > centre && left > right) {
       return -1;
     } else if (right >= centre) {
@@ -589,12 +630,14 @@ class Ant {
   }
 
   sensePheromones() {
+
     let closePheromones = this.findClosePheromones(this.goingHome);
     if (closePheromones.length == 0) {
       return;
     }
 
     let strongestDirection = this.findStrongestDirection(closePheromones);
+
     if (strongestDirection == -1) {
       this.desiredDirection.rotate((-2 * visionAngle) / 3);
     } else if (strongestDirection == 1) {
@@ -626,6 +669,7 @@ class Ant {
   }
 
   releasePheromone() {
+
     if (frameCount % 3 == 0 && this.pheromoneCounter > 0) {
       if (this.goingHome) {
         toFoodPheromones.insert(this.position.copy());
@@ -634,6 +678,8 @@ class Ant {
       }
 
       pheromones.add(new Pheromone(this.goingHome, this.position.copy(), 1));
+
+
       this.pheromoneCounter--;
     }
   }
@@ -687,7 +733,9 @@ class Ant {
         this.beHungry();
       }
     }
-    this.checkObstacles();
+    if (obstaclesPresent) {
+      this.checkObstacles();
+    }
 
     let acceleration = this.getAcceleration();
     this.keepInsideBox();
@@ -695,6 +743,7 @@ class Ant {
     this.releasePheromone();
   }
 }
+
 
 class Boundary {
   constructor(x, y, w, h) {
@@ -866,4 +915,68 @@ class QuadTree {
     }
     return true;
   }
+
+function createButtons() {
+  let buttonNames = [
+    "show vision",
+    "toggle obstacles",
+    "see coverage",
+    "be hungry",
+    "add ant",
+    "remove ant",
+    "increase visibility",
+    "decrease visibility",
+  ];
+  let buttonFunctions = [
+    toggleShowVision,
+    toggleObstacles,
+    toggleSeeCoverage,
+    toggleBeHungry,
+    addAnt,
+    removeAnt,
+    increaseVisibility,
+    decreaseVisibility,
+  ];
+  for (let i = 0; i < buttonNames.length; i++) {
+    let buttonName = buttonNames[i];
+    let button = createButton(buttonName);
+    button.position(width, (height / buttonNames.length) * i);
+    button.mousePressed(buttonFunctions[i]);
+    buttons.push(i);
+  }
+}
+
+function toggleShowVision() {
+  showVision = !showVision;
+}
+
+function toggleObstacles() {
+  obstaclesPresent = !obstaclesPresent;
+}
+
+function toggleSeeCoverage() {
+  seeCoverage = !seeCoverage;
+}
+
+function toggleBeHungry() {
+  hungry = !hungry;
+}
+
+function addAnt() {
+  ants.push(new Ant(home.location.x, home.location.y));
+  antCount++;
+}
+
+function removeAnt() {
+  ants.splice(0, 1);
+  antCount--;
+}
+
+function increaseVisibility() {
+  visibility += 10;
+}
+
+function decreaseVisibility() {
+  visibility -= 10;
+
 }
