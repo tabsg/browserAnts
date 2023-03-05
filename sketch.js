@@ -16,8 +16,8 @@ const foodRange = 5;
 var ants;
 var food;
 
-const width = 500;
-const height = 600;
+const width = 800;
+const height = 700;
 
 const graphHeight = 100;
 var graph = null;
@@ -39,6 +39,17 @@ const obstacleCount = 3;
 var noObstacles;
 
 var currFrames = 0;
+
+const normalTerrain = 0;
+const sandTerrain = 1;
+const terrainSpeeds = [1, 0.5];
+const terrainColours = ["rgb(223, 243, 228)", "rgb(245, 166, 91)"];
+const cellSize = 10;
+var terrainGrid = new Array(Math.ceil(width / cellSize))
+  .fill()
+  .map(() => new Array(Math.ceil(height / cellSize)).fill(0));
+
+var drawingStatus = 0;
 
 function preload() {
   // collectSound = loadSound("assets/collect.mp3");
@@ -77,16 +88,6 @@ function setup() {
   graph = new Graph();
 
   obstacles = [];
-  // for (let k = 0; k < obstacleCount; k++) {
-  //   let proposed = generateLocation();
-  //   while (!checkObstacleLocation(noObstacles, proposed)) {
-  //     proposed = generateLocation();
-  //   }
-  //   noObstacles.push(proposed);
-  //   let w = Math.round(Math.random() * 50 + 20);
-  //   let h = Math.round(Math.random() * 50 + 20);
-  //   obstacles.push(new Obstacle(proposed.x, proposed.y, w, h));
-  // }
 
   pheromones = new Set();
 
@@ -108,13 +109,13 @@ function newFoodCentre() {
   }
 }
 
-function mouseClicked() {
-  let x = mouseX;
-  let y = mouseY;
-  if (x < width && y < height) {
-    obstacles.push(new Obstacle(x, y, 40, 40));
-  }
-}
+// function mouseClicked() {
+//   let x = mouseX;
+//   let y = mouseY;
+//   if (x < width && y < height) {
+//     obstacles.push(new Obstacle(x, y, 40, 40));
+//   }
+// }
 
 function generateLocation() {
   let x = Math.random() * (width - 2 * border) + border;
@@ -141,6 +142,8 @@ function createButtons() {
     "remove ant",
     "increase visibility",
     "decrease visibility",
+    "paint normal terrain",
+    "paint sand terrain",
   ];
   let buttonFunctions = [
     toggleShowVision,
@@ -150,6 +153,8 @@ function createButtons() {
     removeAnt,
     increaseVisibility,
     decreaseVisibility,
+    paintNormalTerrain,
+    paintSandTerrain,
   ];
   for (let i = 0; i < buttonNames.length; i++) {
     let buttonName = buttonNames[i];
@@ -166,6 +171,7 @@ function draw() {
     fill(223, 243, 228);
     rectMode(CORNERS);
     rect(0, 0, width, height);
+    drawTerrain();
   }
 
   toFoodPheromones.show();
@@ -205,6 +211,17 @@ function draw() {
   }
 
   home.display();
+}
+
+function drawTerrain() {
+  rectMode(CORNER);
+  for (let i = 0; i < terrainGrid.length; i++) {
+    for (let j = 0; j < terrainGrid[i].length; j++) {
+      let col = terrainColours[terrainGrid[i][j]];
+      fill(col);
+      rect(i * cellSize, j * cellSize, cellSize, cellSize);
+    }
+  }
 }
 
 class Obstacle {
@@ -382,6 +399,9 @@ class Ant {
     this.targetFood = -1;
     this.goingHome = false;
     this.pheromoneCounter = maxPheromones;
+    this.distanceSinceLastPheromone = 0;
+
+    this.terrain = normal;
   }
 
   display() {
@@ -643,18 +663,27 @@ class Ant {
   }
 
   updatePosition(acceleration) {
+    this.terrainSpeed =
+      terrainSpeeds[
+        terrainGrid[Math.floor(this.position.x / cellSize)][
+          Math.floor(this.position.y / cellSize)
+        ]
+      ];
     this.velocity = this.velocity
       .add(acceleration.mult(this.deltaTime))
       .limit(this.maxSpeed);
 
-    this.position = this.position.add(this.velocity.mult(this.deltaTime));
+    let step = this.velocity.copy().mult(this.deltaTime * this.terrainSpeed);
+    this.distanceSinceLastPheromone += step.mag();
+
+    this.position = this.position.add(step);
     this.position = new p5.Vector(this.position.x, this.position.y);
 
     this.angle = Math.atan2(this.velocity.y, this.velocity.x) + Math.PI / 2;
   }
 
   releasePheromone() {
-    if (frameCount % 5 == 0 && this.pheromoneCounter > 0) {
+    if (this.distanceSinceLastPheromone > 10) {
       if (this.goingHome) {
         toFoodPheromones.insert(this.position.copy());
       } else {
@@ -663,6 +692,7 @@ class Ant {
 
       pheromones.add(new Pheromone(this.goingHome, this.position.copy(), 1));
       this.pheromoneCounter--;
+      this.distanceSinceLastPheromone = 0;
     }
   }
 
@@ -932,4 +962,30 @@ function increaseVisibility() {
 
 function decreaseVisibility() {
   visibility = Math.max(0, visibility - 10);
+}
+
+function paintNormalTerrain() {
+  drawingStatus = 0;
+}
+
+function paintSandTerrain() {
+  drawingStatus = 1;
+}
+
+function mouseDragged() {
+  let x = Math.floor(mouseX / cellSize);
+  let y = Math.floor(mouseY / cellSize);
+  for (let dx = -4; dx <= 4; dx++) {
+    for (let dy = -4; dy <= 4; dy++) {
+      if (
+        Math.pow(dx, 2) + Math.pow(dy, 2) <= 17 &&
+        x + dx >= 0 &&
+        x + dx < width / cellSize &&
+        y + dy >= 0 &&
+        y + dy < height / cellSize
+      ) {
+        terrainGrid[x + dx][y + dy] = drawingStatus;
+      }
+    }
+  }
 }
