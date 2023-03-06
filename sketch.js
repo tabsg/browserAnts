@@ -146,12 +146,14 @@ function checkObstacleLocation(noObstacles, proposed) {
 
 function createSliders() {
   let sliderMinimums = [0, 0, 1];
-  let sliderMaximums = [200, 10, 100];
+  let sliderMaximums = [200, 2, 100];
+  let sliderStepSizes = [10, 0.1, 1];
   for (let i = 0; i < sliderNames.length; i++) {
     let slider = createSlider(
       sliderMinimums[i],
       sliderMaximums[i],
-      sliderVars[i]
+      sliderVars[i],
+      sliderStepSizes[i]
     );
     slider.position(width, 60 * buttons.length + 80 * i);
     sliders.push(slider);
@@ -204,6 +206,7 @@ function draw() {
   deltaTime = sliders[1].value();
   pheromoneDistance = sliders[2].value();
   for (let i = 0; i < sliders.length; i++) {
+    fill(255);
     text(
       sliderNames[i] + ": " + sliders[i].value(),
       width,
