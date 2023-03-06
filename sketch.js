@@ -4,6 +4,7 @@ const steeringCorrection = 1;
 var antCount = 200;
 var visibility = 100;
 const visionAngle = Math.PI / 3;
+var deltaTime = 1;
 
 var home = null;
 
@@ -28,11 +29,15 @@ const showGraph = true;
 var showVision = false;
 
 const buttons = [];
+const sliders = [];
+const sliderNames = ["visibility", "step size", "pheromone distance"];
+const sliderVars = [100, 1, 10];
 
 let toHomePheromones;
 let toFoodPheromones;
 var pheromones;
 const maxPheromones = 300;
+var pheromoneDistance = 10;
 
 var obstacles;
 const obstacleCount = 3;
@@ -42,8 +47,13 @@ var currFrames = 0;
 
 const normalTerrain = 0;
 const sandTerrain = 1;
-const terrainSpeeds = [1, 0.5];
-const terrainColours = ["rgb(223, 243, 228)", "rgb(245, 166, 91)"];
+const speedTerrain = 2;
+const terrainSpeeds = [1, 0.5, 1.5];
+const terrainColours = [
+  "rgb(223, 243, 228)",
+  "rgb(245, 166, 91)",
+  "rgb(50, 150, 93)",
+];
 const cellSize = 10;
 var terrainGrid = new Array(Math.ceil(width / cellSize))
   .fill()
@@ -57,7 +67,7 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(width + 1.5 * graphHeight, height + graphHeight);
+  createCanvas(width + 2 * graphHeight, height + graphHeight);
   fill(223, 243, 228);
 
   noObstacles = [];
@@ -96,6 +106,7 @@ function setup() {
   frameRate(24);
 
   createButtons();
+  createSliders();
 }
 
 function newFoodCentre() {
@@ -133,34 +144,49 @@ function checkObstacleLocation(noObstacles, proposed) {
   return true;
 }
 
+function createSliders() {
+  let sliderMinimums = [0, 0, 1];
+  let sliderMaximums = [200, 10, 100];
+  for (let i = 0; i < sliderNames.length; i++) {
+    let slider = createSlider(
+      sliderMinimums[i],
+      sliderMaximums[i],
+      sliderVars[i]
+    );
+    slider.position(width, 60 * buttons.length + 80 * i);
+    sliders.push(slider);
+  }
+}
+
 function createButtons() {
   let buttonNames = [
+    "paint normal terrain",
+    "paint sand terrain",
+    "paint speed terrain",
     "show vision",
     "see coverage",
     "be hungry",
     "add ant",
     "remove ant",
-    "increase visibility",
-    "decrease visibility",
-    "paint normal terrain",
-    "paint sand terrain",
   ];
   let buttonFunctions = [
+    paintNormalTerrain,
+    paintSandTerrain,
+    paintSpeedTerrain,
     toggleShowVision,
     toggleSeeCoverage,
     toggleBeHungry,
     addAnt,
     removeAnt,
-    increaseVisibility,
-    decreaseVisibility,
-    paintNormalTerrain,
-    paintSandTerrain,
   ];
   for (let i = 0; i < buttonNames.length; i++) {
     let buttonName = buttonNames[i];
     let button = createButton(buttonName);
     button.position(width, 60 * i);
     button.mousePressed(buttonFunctions[i]);
+    if (i < terrainColours.length) {
+      button.style("background-color", terrainColours[i]);
+    }
     buttons.push(i);
   }
 }
@@ -172,6 +198,17 @@ function draw() {
     rectMode(CORNERS);
     rect(0, 0, width, height);
     drawTerrain();
+  }
+
+  visibility = sliders[0].value();
+  deltaTime = sliders[1].value();
+  pheromoneDistance = sliders[2].value();
+  for (let i = 0; i < sliders.length; i++) {
+    text(
+      sliderNames[i] + ": " + sliders[i].value(),
+      width,
+      60 * buttons.length + 80 * i + 30
+    );
   }
 
   toFoodPheromones.show();
@@ -382,8 +419,6 @@ class Food {
 }
 class Ant {
   constructor(x, y) {
-    this.deltaTime = 1;
-
     this.maxSpeed = 3;
     this.steerStrength = 0.5;
     this.wanderStrength = 0.2;
@@ -670,10 +705,10 @@ class Ant {
         ]
       ];
     this.velocity = this.velocity
-      .add(acceleration.mult(this.deltaTime))
+      .add(acceleration.mult(deltaTime))
       .limit(this.maxSpeed);
 
-    let step = this.velocity.copy().mult(this.deltaTime * this.terrainSpeed);
+    let step = this.velocity.copy().mult(deltaTime * this.terrainSpeed);
     this.distanceSinceLastPheromone += step.mag();
 
     this.position = this.position.add(step);
@@ -683,7 +718,7 @@ class Ant {
   }
 
   releasePheromone() {
-    if (this.distanceSinceLastPheromone > 10) {
+    if (this.distanceSinceLastPheromone > pheromoneDistance) {
       if (this.goingHome) {
         toFoodPheromones.insert(this.position.copy());
       } else {
@@ -972,7 +1007,14 @@ function paintSandTerrain() {
   drawingStatus = 1;
 }
 
+function paintSpeedTerrain() {
+  drawingStatus = 2;
+}
+
 function mouseDragged() {
+  if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) {
+    return;
+  }
   let x = Math.floor(mouseX / cellSize);
   let y = Math.floor(mouseY / cellSize);
   for (let dx = -4; dx <= 4; dx++) {
