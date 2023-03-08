@@ -71,6 +71,7 @@ function setup() {
   fill(223, 243, 228);
 
   noObstacles = [];
+  generateRandomTerrain();
 
   home = new Home();
   noObstacles[0] = home.location;
@@ -107,6 +108,38 @@ function setup() {
 
   createButtons();
   createSliders();
+}
+
+function generateRandomTerrain() {
+  seedCount = 20;
+  seeds = [];
+  for (let i = 0; i < seedCount; i++) {
+    let x = Math.round(Math.random() * (width / cellSize));
+    let y = Math.round(Math.random() * (height / cellSize));
+    terrainGrid[x][y] = speedTerrain;
+    seeds.push([x, y]);
+  }
+  for (let x = 0; x < terrainGrid.length; x++) {
+    for (let y = 0; y < terrainGrid[x].length; y++) {
+      let distances = [];
+      for (let i = 0; i < seedCount; i++) {
+        let dx = Math.abs(x - seeds[i][0]);
+        let dy = Math.abs(y - seeds[i][1]);
+        distances.push(dx * dx + dy * dy);
+      }
+      distances.sort((a, b) => a - b);
+      let distance = distances[0];
+      print(distances);
+      print(distance);
+      if (distance < 60) {
+        terrainGrid[x][y] = speedTerrain;
+      } else if (distance < 150) {
+        terrainGrid[x][y] = normalTerrain;
+      } else {
+        terrainGrid[x][y] = sandTerrain;
+      }
+    }
+  }
 }
 
 function newFoodCentre() {
@@ -424,7 +457,7 @@ class Ant {
   constructor(x, y) {
     this.maxSpeed = 3;
     this.steerStrength = 0.5;
-    this.wanderStrength = 0.2;
+    this.wanderStrength = 0.5;
 
     this.angle = 0;
     this.position = new p5.Vector(x, y);
