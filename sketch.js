@@ -45,14 +45,18 @@ var noObstacles;
 
 var currFrames = 0;
 
-const normalTerrain = 0;
-const sandTerrain = 1;
-const speedTerrain = 2;
-const terrainSpeeds = [1, 0.5, 1.5];
+const verySlowTerrain = 0;
+const slowTerrain = 1;
+const normalTerrain = 2;
+const fastTerrain = 3;
+const veryFastTerrain = 4;
+const terrainSpeeds = [0.3, 0.65, 1, 1.3, 1.65];
 const terrainColours = [
-  "rgb(223, 243, 228)",
-  "rgb(245, 166, 91)",
-  "rgb(50, 150, 93)",
+  "rgb(251, 216, 127)",
+  "rgb(193, 226, 146)",
+  "rgb(130, 236, 166)",
+  "rgb(76, 245, 183)",
+  "rgb(16, 255, 203)",
 ];
 const cellSize = 10;
 var terrainGrid = new Array(Math.ceil(width / cellSize))
@@ -116,7 +120,7 @@ function generateRandomTerrain() {
   for (let i = 0; i < seedCount; i++) {
     let x = Math.round(Math.random() * (width / cellSize));
     let y = Math.round(Math.random() * (height / cellSize));
-    terrainGrid[x][y] = speedTerrain;
+    terrainGrid[x][y] = veryFastTerrain;
     seeds.push([x, y]);
   }
   for (let x = 0; x < terrainGrid.length; x++) {
@@ -131,12 +135,16 @@ function generateRandomTerrain() {
       let distance = distances[0];
       print(distances);
       print(distance);
-      if (distance < 60) {
-        terrainGrid[x][y] = speedTerrain;
-      } else if (distance < 150) {
+      if (distance < 20) {
+        terrainGrid[x][y] = veryFastTerrain;
+      } else if (distance < 60) {
+        terrainGrid[x][y] = fastTerrain;
+      } else if (distance < 100) {
         terrainGrid[x][y] = normalTerrain;
+      } else if (distance < 150) {
+        terrainGrid[x][y] = slowTerrain;
       } else {
-        terrainGrid[x][y] = sandTerrain;
+        terrainGrid[x][y] = verySlowTerrain;
       }
     }
   }
@@ -1036,15 +1044,15 @@ function decreaseVisibility() {
 }
 
 function paintNormalTerrain() {
-  drawingStatus = 0;
+  drawingStatus = normalTerrain;
 }
 
 function paintSandTerrain() {
-  drawingStatus = 1;
+  drawingStatus = verySlowTerrain;
 }
 
 function paintSpeedTerrain() {
-  drawingStatus = 2;
+  drawingStatus = veryFastTerrain;
 }
 
 function mouseDragged() {
