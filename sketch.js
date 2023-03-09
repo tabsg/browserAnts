@@ -31,7 +31,7 @@ var showVision = false;
 const buttons = [];
 const sliders = [];
 const sliderNames = ["visibility", "step size", "pheromone distance"];
-const sliderVars = [100, 1, 10];
+const sliderVars = [100, 1, 20];
 
 let toHomePheromones;
 let toFoodPheromones;
@@ -62,6 +62,8 @@ const cellSize = 10;
 var terrainGrid = new Array(Math.ceil(width / cellSize))
   .fill()
   .map(() => new Array(Math.ceil(height / cellSize)).fill(0));
+var terrainWidth;
+var terrainHeight;
 
 var drawingStatus = 0;
 
@@ -75,6 +77,8 @@ function setup() {
   fill(223, 243, 228);
 
   noObstacles = [];
+  terrainWidth = terrainGrid.length;
+  terrainHeight = terrainGrid[0].length;
   generateRandomTerrain();
 
   home = new Home();
@@ -115,7 +119,7 @@ function setup() {
 }
 
 function generateRandomTerrain() {
-  seedCount = 20;
+  seedCount = 30;
   seeds = [];
   for (let i = 0; i < seedCount; i++) {
     let x = Math.round(Math.random() * (width / cellSize));
@@ -123,8 +127,8 @@ function generateRandomTerrain() {
     terrainGrid[x][y] = veryFastTerrain;
     seeds.push([x, y]);
   }
-  for (let x = 0; x < terrainGrid.length; x++) {
-    for (let y = 0; y < terrainGrid[x].length; y++) {
+  for (let x = 0; x < terrainWidth; x++) {
+    for (let y = 0; y < terrainHeight; y++) {
       let distances = [];
       for (let i = 0; i < seedCount; i++) {
         let dx = Math.abs(x - seeds[i][0]);
@@ -133,8 +137,6 @@ function generateRandomTerrain() {
       }
       distances.sort((a, b) => a - b);
       let distance = distances[0];
-      print(distances);
-      print(distance);
       if (distance < 20) {
         terrainGrid[x][y] = veryFastTerrain;
       } else if (distance < 60) {
@@ -176,7 +178,6 @@ function generateLocation() {
 }
 
 function checkObstacleLocation(noObstacles, proposed) {
-  print(noObstacles);
   noObstacles.forEach((location) => {
     if (proposed.dist(location) < 100) {
       return false;
@@ -203,9 +204,11 @@ function createSliders() {
 
 function createButtons() {
   let buttonNames = [
+    "pain very slow terrain",
+    "paint slow terrain",
     "paint normal terrain",
-    "paint sand terrain",
-    "paint speed terrain",
+    "paint fast terrain",
+    "paint very fast terrain",
     "show vision",
     "see coverage",
     "be hungry",
@@ -213,9 +216,11 @@ function createButtons() {
     "remove ant",
   ];
   let buttonFunctions = [
+    paintVerySlowTerrain,
+    paintSlowTerrain,
     paintNormalTerrain,
-    paintSandTerrain,
-    paintSpeedTerrain,
+    paintFastTerrain,
+    paintVeryFastTerrain,
     toggleShowVision,
     toggleSeeCoverage,
     toggleBeHungry,
@@ -232,6 +237,12 @@ function createButtons() {
     }
     buttons.push(i);
   }
+}
+
+function getTerrainSpeed(x, y) {
+  let terrainX = Math.floor(x / cellSize);
+  let terrainY = Math.floor(y / cellSize);
+  return terrainGrid[terrainX][terrainY];
 }
 
 function draw() {
@@ -272,7 +283,7 @@ function draw() {
     currFrames = int(getFrameRate());
   }
   fill(0);
-  text(currFrames, width + 10, height + 10);
+  text(currFrames, width - 20, height + 20);
 
   ants.forEach((ant) => {
     ant.update();
@@ -296,8 +307,8 @@ function draw() {
 
 function drawTerrain() {
   rectMode(CORNER);
-  for (let i = 0; i < terrainGrid.length; i++) {
-    for (let j = 0; j < terrainGrid[i].length; j++) {
+  for (let i = 0; i < terrainWidth; i++) {
+    for (let j = 0; j < terrainHeight; j++) {
       let col = terrainColours[terrainGrid[i][j]];
       fill(col);
       rect(i * cellSize, j * cellSize, cellSize, cellSize);
@@ -465,7 +476,7 @@ class Ant {
   constructor(x, y) {
     this.maxSpeed = 3;
     this.steerStrength = 0.5;
-    this.wanderStrength = 0.5;
+    this.wanderStrength = 0.35;
 
     this.angle = 0;
     this.position = new p5.Vector(x, y);
@@ -480,7 +491,7 @@ class Ant {
     this.pheromoneCounter = maxPheromones;
     this.distanceSinceLastPheromone = 0;
 
-    this.terrain = normal;
+    this.terrain = normalTerrain;
   }
 
   display() {
@@ -702,11 +713,11 @@ class Ant {
     closePheromones.forEach((pheromone) => {
       let angle = this.getAngleToPheromone(pheromone);
       if (angle > -visionAngle && angle <= -visionAngle / 3) {
-        left += 1;
+        left += getTerrainSpeed(pheromone[0], pheromone[1]);
       } else if (angle > -visionAngle / 3 && angle <= visionAngle / 3) {
-        centre += 1;
+        centre += getTerrainSpeed(pheromone[0], pheromone[1]);
       } else if (angle > visionAngle / 3 && angle < visionAngle) {
-        right += 1;
+        right += getTerrainSpeed(pheromone[0], pheromone[1]);
       }
     });
     if (left > centre && left > right) {
@@ -1047,11 +1058,19 @@ function paintNormalTerrain() {
   drawingStatus = normalTerrain;
 }
 
-function paintSandTerrain() {
+function paintSlowTerrain() {
+  drawingStatus = slowTerrain;
+}
+
+function paintVerySlowTerrain() {
   drawingStatus = verySlowTerrain;
 }
 
-function paintSpeedTerrain() {
+function paintFastTerrain() {
+  drawingStatus = fastTerrain;
+}
+
+function paintVeryFastTerrain() {
   drawingStatus = veryFastTerrain;
 }
 
