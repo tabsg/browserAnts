@@ -30,8 +30,13 @@ var showVision = false;
 
 const buttons = [];
 const sliders = [];
-const sliderNames = ["visibility", "step size", "pheromone distance"];
-const sliderVars = [100, 1, 20];
+const sliderNames = [
+  "visibility",
+  "step size",
+  "pheromone distance",
+  "brush size",
+];
+const sliderVars = [100, 1, 20, 4];
 
 let toHomePheromones;
 let toFoodPheromones;
@@ -66,6 +71,7 @@ var terrainWidth;
 var terrainHeight;
 
 var drawingStatus = 0;
+var brushSize = 4;
 
 function preload() {
   // collectSound = loadSound("assets/collect.mp3");
@@ -187,9 +193,9 @@ function checkObstacleLocation(noObstacles, proposed) {
 }
 
 function createSliders() {
-  let sliderMinimums = [0, 0, 1];
-  let sliderMaximums = [200, 2, 100];
-  let sliderStepSizes = [10, 0.1, 1];
+  let sliderMinimums = [0, 0, 1, 1];
+  let sliderMaximums = [200, 2, 100, 10];
+  let sliderStepSizes = [10, 0.1, 1, 1];
   for (let i = 0; i < sliderNames.length; i++) {
     let slider = createSlider(
       sliderMinimums[i],
@@ -197,14 +203,14 @@ function createSliders() {
       sliderVars[i],
       sliderStepSizes[i]
     );
-    slider.position(width, 60 * buttons.length + 80 * i);
+    slider.position(width, 60 * buttons.length + 50 * i);
     sliders.push(slider);
   }
 }
 
 function createButtons() {
   let buttonNames = [
-    "pain very slow terrain",
+    "paint very slow terrain",
     "paint slow terrain",
     "paint normal terrain",
     "paint fast terrain",
@@ -257,17 +263,18 @@ function draw() {
   visibility = sliders[0].value();
   deltaTime = sliders[1].value();
   pheromoneDistance = sliders[2].value();
+  brushSize = sliders[3].value();
   for (let i = 0; i < sliders.length; i++) {
     fill(255);
     text(
       sliderNames[i] + ": " + sliders[i].value(),
       width,
-      60 * buttons.length + 80 * i + 30
+      60 * buttons.length + 50 * i + 30
     );
   }
 
-  toFoodPheromones.show();
-  toHomePheromones.show();
+  // toFoodPheromones.show();
+  // toHomePheromones.show();
   noStroke();
 
   obstacles.forEach((obstacle) => {
@@ -1080,10 +1087,10 @@ function mouseDragged() {
   }
   let x = Math.floor(mouseX / cellSize);
   let y = Math.floor(mouseY / cellSize);
-  for (let dx = -4; dx <= 4; dx++) {
-    for (let dy = -4; dy <= 4; dy++) {
+  for (let dx = -brushSize; dx <= brushSize; dx++) {
+    for (let dy = -brushSize; dy <= brushSize; dy++) {
       if (
-        Math.pow(dx, 2) + Math.pow(dy, 2) <= 17 &&
+        Math.pow(dx, 2) + Math.pow(dy, 2) <= brushSize * brushSize + 1 &&
         x + dx >= 0 &&
         x + dx < width / cellSize &&
         y + dy >= 0 &&
