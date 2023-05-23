@@ -2,9 +2,9 @@ const trail = 1;
 const border = 30;
 const steeringCorrection = 1;
 var antCount = 200;
-var visibility = 100;
+const deltaTime = 1;
+
 const visionAngle = Math.PI / 3;
-var deltaTime = 1;
 
 var home = null;
 
@@ -23,26 +23,10 @@ const height = 700;
 const graphHeight = 100;
 var graph = null;
 
-var seeCoverage = false;
-var hungry = true;
-const showGraph = true;
-var showVision = false;
-
-const buttons = [];
-const sliders = [];
-const sliderNames = [
-  "visibility",
-  "step size",
-  "pheromone distance",
-  "brush size",
-];
-const sliderVars = [100, 1, 20, 4];
-
 let toHomePheromones;
 let toFoodPheromones;
 var pheromones;
 const maxPheromones = 300;
-var pheromoneDistance = 10;
 
 var obstacles;
 const obstacleCount = 3;
@@ -50,13 +34,15 @@ var noObstacles;
 
 var currFrames = 0;
 
-const verySlowTerrain = 0;
-const slowTerrain = 1;
-const normalTerrain = 2;
-const fastTerrain = 3;
-const veryFastTerrain = 4;
-const terrainSpeeds = [0.3, 0.65, 1, 1.3, 1.65];
+const noTerrain = 0;
+const verySlowTerrain = 1;
+const slowTerrain = 2;
+const normalTerrain = 3;
+const fastTerrain = 4;
+const veryFastTerrain = 5;
+const terrainSpeeds = [0, 0.3, 0.65, 1, 1.3, 1.65];
 const terrainColours = [
+  "rgb(0,0,0)",
   "rgb(251, 216, 127)",
   "rgb(193, 226, 146)",
   "rgb(130, 236, 166)",
@@ -70,8 +56,41 @@ var terrainGrid = new Array(Math.ceil(width / cellSize))
 var terrainWidth;
 var terrainHeight;
 
-var drawingStatus = 0;
+// GUI Variables
+var gui;
+
+var visibility = 100;
+var visibilityMin = 0;
+var visibilityMax = 200;
+var visibilityStep = 10;
+
+var pheromoneDistance = 10;
+var pheromoneDistanceMin = 1;
+var pheromoneDistanceMax = 100;
+var pheromoneDistanceStep = 1;
+
 var brushSize = 4;
+var brushSizeMin = 1;
+var brushSizeMax = 10;
+var brushSizeStep = 1;
+
+var desiredAntCount = 200;
+var desiredAntCountMin = 1;
+var desiredAntCountMax = 500;
+var desiredAntCountStep = 1;
+
+var seeCoverage = false;
+var hungry = true;
+var showGraph = true;
+var showVision = false;
+var drawingStatus = [
+  noTerrain,
+  verySlowTerrain,
+  slowTerrain,
+  normalTerrain,
+  fastTerrain,
+  veryFastTerrain,
+];
 
 function preload() {
   // collectSound = loadSound("assets/collect.mp3");
@@ -79,7 +98,7 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(width + 2 * graphHeight, height + graphHeight);
+  var canvas = createCanvas(width + 2 * graphHeight, height + graphHeight);
   fill(223, 243, 228);
 
   noObstacles = [];
@@ -120,8 +139,18 @@ function setup() {
   rectMode(CENTER);
   frameRate(24);
 
-  createButtons();
-  createSliders();
+  gui = createGui("Settings");
+  gui.addGlobals(
+    "visibility",
+    "pheromoneDistance",
+    "brushSize",
+    "desiredAntCount",
+    "hungry",
+    "seeCoverage",
+    "showVision",
+    "showGraph",
+    "drawingStatus"
+  );
 }
 
 function generateRandomTerrain() {
@@ -192,59 +221,6 @@ function checkObstacleLocation(noObstacles, proposed) {
   return true;
 }
 
-function createSliders() {
-  let sliderMinimums = [0, 0, 1, 1];
-  let sliderMaximums = [200, 2, 100, 10];
-  let sliderStepSizes = [10, 0.1, 1, 1];
-  for (let i = 0; i < sliderNames.length; i++) {
-    let slider = createSlider(
-      sliderMinimums[i],
-      sliderMaximums[i],
-      sliderVars[i],
-      sliderStepSizes[i]
-    );
-    slider.position(width, 60 * buttons.length + 50 * i);
-    sliders.push(slider);
-  }
-}
-
-function createButtons() {
-  let buttonNames = [
-    "paint very slow terrain",
-    "paint slow terrain",
-    "paint normal terrain",
-    "paint fast terrain",
-    "paint very fast terrain",
-    "show vision",
-    "see coverage",
-    "be hungry",
-    "add ant",
-    "remove ant",
-  ];
-  let buttonFunctions = [
-    paintVerySlowTerrain,
-    paintSlowTerrain,
-    paintNormalTerrain,
-    paintFastTerrain,
-    paintVeryFastTerrain,
-    toggleShowVision,
-    toggleSeeCoverage,
-    toggleBeHungry,
-    addAnt,
-    removeAnt,
-  ];
-  for (let i = 0; i < buttonNames.length; i++) {
-    let buttonName = buttonNames[i];
-    let button = createButton(buttonName);
-    button.position(width, 60 * i);
-    button.mousePressed(buttonFunctions[i]);
-    if (i < terrainColours.length) {
-      button.style("background-color", terrainColours[i]);
-    }
-    buttons.push(i);
-  }
-}
-
 function getTerrainSpeed(x, y) {
   let terrainX = Math.floor(x / cellSize);
   let terrainY = Math.floor(y / cellSize);
@@ -258,19 +234,6 @@ function draw() {
     rectMode(CORNERS);
     rect(0, 0, width, height);
     drawTerrain();
-  }
-
-  visibility = sliders[0].value();
-  deltaTime = sliders[1].value();
-  pheromoneDistance = sliders[2].value();
-  brushSize = sliders[3].value();
-  for (let i = 0; i < sliders.length; i++) {
-    fill(255);
-    text(
-      sliderNames[i] + ": " + sliders[i].value(),
-      width,
-      60 * buttons.length + 50 * i + 30
-    );
   }
 
   // toFoodPheromones.show();
@@ -291,6 +254,15 @@ function draw() {
   }
   fill(0);
   text(currFrames, width - 20, height + 20);
+
+  if (desiredAntCount != antCount) {
+    while (desiredAntCount > antCount) {
+      addAnt();
+    }
+    while (desiredAntCount < antCount) {
+      removeAnt();
+    }
+  }
 
   ants.forEach((ant) => {
     ant.update();
@@ -1083,6 +1055,9 @@ function paintVeryFastTerrain() {
 
 function mouseDragged() {
   if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) {
+    return;
+  }
+  if (drawingStatus == 0) {
     return;
   }
   let x = Math.floor(mouseX / cellSize);
