@@ -49,6 +49,12 @@ const terrainColours = [
   "rgb(76, 245, 183)",
   "rgb(16, 255, 203)",
 ];
+
+const heightColours = [
+  [149, 249, 195],
+  [11, 56, 102],
+];
+
 const cellSize = 10;
 var terrainGrid = new Array(Math.ceil(width / cellSize))
   .fill()
@@ -92,6 +98,8 @@ var drawingStatus = [
   veryFastTerrain,
 ];
 
+var useHeights = true;
+
 function preload() {
   // collectSound = loadSound("assets/collect.mp3");
   // returnSound = loadSound("assets/return.mp3");
@@ -101,13 +109,11 @@ function setup() {
   var canvas = createCanvas(width + 2 * graphHeight, height + graphHeight);
   fill(223, 243, 228);
 
-  noObstacles = [];
   terrainWidth = terrainGrid.length;
   terrainHeight = terrainGrid[0].length;
   generateRandomTerrain();
 
   home = new Home();
-  noObstacles[0] = home.location;
   noStroke();
 
   toHomePheromones = new QuadTree(
@@ -149,7 +155,8 @@ function setup() {
     "seeCoverage",
     "showVision",
     "showGraph",
-    "drawingStatus"
+    "drawingStatus",
+    "useHeights"
   );
 }
 
@@ -1075,4 +1082,46 @@ function mouseDragged() {
       }
     }
   }
+}
+
+function getHeightColour(height) {
+  return mixColours(heightColours[0], heightColours[1], height);
+}
+
+function mixColours(colour1, colour2, ratio) {
+  colour1 = InvertSrgbCompanding(colour1);
+  colour2 = InvertSrgbCompanding(colour2);
+
+  let mixedColour = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    mixedColour[i] = colour1[i] * (1 - ratio) + colour2[i] * ratio;
+  }
+
+  mixedColour = srgbCompanding(mixedColour);
+}
+
+function InvertSrgbCompanding(colour) {
+  colour.forEach((value) => {
+    value /= 255;
+    if (value > 0.04045) {
+      value = Math.pow((r + 0.055) / 1.055, 2.4);
+    } else {
+      value /= 12.92;
+    }
+    value *= 255;
+  });
+  return colour;
+}
+
+function srgbCompanding(colour) {
+  colour.forEach((value) => {
+    value /= 255;
+    if (value > 0.0031308) {
+      value = 1.055 * Math.pow(value, 1 / 2.4) - 0.055;
+    } else {
+      value *= 12.92;
+    }
+    value *= 255;
+  });
+  return colour;
 }
