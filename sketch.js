@@ -51,16 +51,26 @@ const terrainColours = [
 ];
 
 const heightColours = [
-  [149, 249, 195],
-  [11, 56, 102],
+  [71, 111, 0],
+  [174, 251, 42],
 ];
 
+const seedCount = 30;
+var seeds;
 const cellSize = 10;
 var terrainGrid = new Array(Math.ceil(width / cellSize))
   .fill()
   .map(() => new Array(Math.ceil(height / cellSize)).fill(0));
 var terrainWidth;
 var terrainHeight;
+
+var heightGrid = new Array(Math.ceil(width / cellSize))
+  .fill()
+  .map(() => new Array(Math.ceil(height / cellSize)).fill(0));
+
+var heightColoursGrid = new Array(Math.ceil(width / cellSize))
+  .fill()
+  .map(() => new Array(Math.ceil(height / cellSize)).fill(0));
 
 // GUI Variables
 var gui;
@@ -98,7 +108,7 @@ var drawingStatus = [
   veryFastTerrain,
 ];
 
-var useHeights = true;
+var useHeights = false;
 
 function preload() {
   // collectSound = loadSound("assets/collect.mp3");
@@ -109,9 +119,13 @@ function setup() {
   var canvas = createCanvas(width + 2 * graphHeight, height + graphHeight);
   fill(223, 243, 228);
 
+  currentTerrain = useHeights;
   terrainWidth = terrainGrid.length;
   terrainHeight = terrainGrid[0].length;
-  generateRandomTerrain();
+  seeds = generateSeeds();
+  generateHeights();
+  print(heightGrid);
+  generateTerrain();
 
   home = new Home();
   noStroke();
@@ -160,15 +174,41 @@ function setup() {
   );
 }
 
-function generateRandomTerrain() {
-  seedCount = 30;
+function generateSeeds() {
   seeds = [];
   for (let i = 0; i < seedCount; i++) {
     let x = Math.round(Math.random() * (width / cellSize));
     let y = Math.round(Math.random() * (height / cellSize));
-    terrainGrid[x][y] = veryFastTerrain;
+    terrainGrid[x][y] = 1;
+    heightGrid[x][y] = 1;
     seeds.push([x, y]);
   }
+  return seeds;
+}
+
+function generateHeights() {
+  for (let x = 0; x < terrainWidth; x++) {
+    for (let y = 0; y < terrainHeight; y++) {
+      let distances = [];
+      for (let i = 0; i < seedCount; i++) {
+        let dx = Math.abs(x - seeds[i][0]);
+        let dy = Math.abs(y - seeds[i][1]);
+        distances.push(dx * dx + dy * dy);
+      }
+      distances.sort((a, b) => a - b);
+      let distance = distances[0];
+      let scaledDistance = 1 - distance / 100;
+      if (scaledDistance < 0) {
+        scaledDistance = 0;
+      }
+      scaledDistance = Math.pow(scaledDistance, 2);
+      heightGrid[x][y] = scaledDistance;
+      heightColoursGrid[x][y] = getHeightColour(heightGrid[x][y]);
+    }
+  }
+}
+
+function generateTerrain() {
   for (let x = 0; x < terrainWidth; x++) {
     for (let y = 0; y < terrainHeight; y++) {
       let distances = [];
@@ -234,13 +274,23 @@ function getTerrainSpeed(x, y) {
   return terrainGrid[terrainX][terrainY];
 }
 
+function getTerrainHeight(x, y) {
+  let terrainX = Math.floor(x / cellSize);
+  let terrainY = Math.floor(y / cellSize);
+  return heightGrid[terrainX][terrainY];
+}
+
 function draw() {
   if (!seeCoverage) {
     background(108, 75, 94);
     fill(223, 243, 228);
     rectMode(CORNERS);
     rect(0, 0, width, height);
-    drawTerrain();
+    if (useHeights) {
+      drawHeights();
+    } else {
+      drawTerrain();
+    }
   }
 
   // toFoodPheromones.show();
@@ -296,6 +346,17 @@ function drawTerrain() {
   for (let i = 0; i < terrainWidth; i++) {
     for (let j = 0; j < terrainHeight; j++) {
       let col = terrainColours[terrainGrid[i][j]];
+      fill(col);
+      rect(i * cellSize, j * cellSize, cellSize, cellSize);
+    }
+  }
+}
+
+function drawHeights() {
+  rectMode(CORNER);
+  for (let i = 0; i < terrainWidth; i++) {
+    for (let j = 0; j < terrainHeight; j++) {
+      let col = heightColoursGrid[i][j];
       fill(col);
       rect(i * cellSize, j * cellSize, cellSize, cellSize);
     }
@@ -1098,13 +1159,14 @@ function mixColours(colour1, colour2, ratio) {
   }
 
   mixedColour = srgbCompanding(mixedColour);
+  return mixedColour;
 }
 
 function InvertSrgbCompanding(colour) {
   colour.forEach((value) => {
     value /= 255;
     if (value > 0.04045) {
-      value = Math.pow((r + 0.055) / 1.055, 2.4);
+      value = Math.pow((value + 0.055) / 1.055, 2.4);
     } else {
       value /= 12.92;
     }
