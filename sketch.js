@@ -100,6 +100,11 @@ var desiredAntCountMin = 1;
 var desiredAntCountMax = 500;
 var desiredAntCountStep = 1;
 
+var pheromoneDecay = -4.5;
+var pheromoneDecayMin = -6;
+var pheromoneDecayMax = -2;
+var pheromoneDecayStep = 0.1;
+
 var seeCoverage = false;
 var hungry = true;
 var showGraph = true;
@@ -169,6 +174,7 @@ function setup() {
     "pheromoneDistance",
     "brushSize",
     "desiredAntCount",
+    "pheromoneDecay",
     "hungry",
     "seeCoverage",
     "showVision",
@@ -401,8 +407,8 @@ class Pheromone {
   }
 
   update() {
-    this.strength -= 0.01;
-    if (this.strength <= 0.02) {
+    this.strength -= Math.exp(pheromoneDecay);
+    if (this.strength <= 2 * Math.exp(pheromoneDecay)) {
       if (this.toFood) {
         toFoodPheromones.remove(this.position.copy());
       } else {
