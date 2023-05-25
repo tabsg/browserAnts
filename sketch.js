@@ -200,7 +200,7 @@ function generateHeights() {
   for (let x = 0; x < terrainWidth; x++) {
     for (let y = 0; y < terrainHeight; y++) {
       let distances = [];
-      for (let i = 0; i < seedCount; i++) {
+      for (let i = 0; i < seedCount / 5; i++) {
         let dx = Math.abs(x - seeds[i][0]);
         let dy = Math.abs(y - seeds[i][1]);
         distances.push(dx * dx + dy * dy);
@@ -768,13 +768,19 @@ class Ant {
     let centre = 0;
     let right = 0;
     closePheromones.forEach((pheromone) => {
+      let pheromoneValue = 1;
+      if (!useHeights) {
+        pheromoneValue = getTerrainSpeed(pheromone[0], pheromone[1]);
+      } else {
+        pheromoneValue = 1 / getTerrainHeight(pheromone[0], pheromone[1]);
+      }
       let angle = this.getAngleToPheromone(pheromone);
       if (angle > -visionAngle && angle <= -visionAngle / 3) {
-        left += getTerrainSpeed(pheromone[0], pheromone[1]);
+        left += pheromoneValue;
       } else if (angle > -visionAngle / 3 && angle <= visionAngle / 3) {
-        centre += getTerrainSpeed(pheromone[0], pheromone[1]);
+        centre += pheromoneValue;
       } else if (angle > visionAngle / 3 && angle < visionAngle) {
-        right += getTerrainSpeed(pheromone[0], pheromone[1]);
+        right += pheromone;
       }
     });
     if (left > centre && left > right) {
@@ -820,13 +826,18 @@ class Ant {
       .add(acceleration.mult(deltaTime))
       .limit(this.maxSpeed);
 
-    let step = this.velocity.copy().mult(deltaTime * this.terrainSpeed);
-    this.distanceSinceLastPheromone += step.mag();
+    let step = this.velocity.copy().mult(deltaTime);
 
-    let predictedPosition = this.predictNewPosition(step);
-    let heightDifference = this.getHeightDifference(predictedPosition);
-    let gradientFactor = this.getGradientFactor(heightDifference);
-    step.mult(gradientFactor);
+    if (useHeights) {
+      let predictedPosition = this.predictNewPosition(step);
+      let heightDifference = this.getHeightDifference(predictedPosition);
+      let gradientFactor = this.getGradientFactor(heightDifference);
+      step.mult(gradientFactor);
+    } else {
+      step.mult(this.terrainSpeed);
+    }
+
+    this.distanceSinceLastPheromone += step.mag();
 
     this.position = this.position.add(step);
     this.position = new p5.Vector(this.position.x, this.position.y);
