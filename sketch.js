@@ -50,9 +50,14 @@ const terrainColours = [
   "rgb(16, 255, 203)",
 ];
 
+// const heightColours = [
+//   [71, 111, 0],
+//   [174, 251, 42],
+// ];
+
 const heightColours = [
-  [71, 111, 0],
-  [174, 251, 42],
+  [221, 255, 217],
+  [244, 192, 149],
 ];
 
 const seedCount = 30;
@@ -108,7 +113,7 @@ var drawingStatus = [
   veryFastTerrain,
 ];
 
-var useHeights = false;
+var useHeights = true;
 
 function preload() {
   // collectSound = loadSound("assets/collect.mp3");
@@ -124,7 +129,6 @@ function setup() {
   terrainHeight = terrainGrid[0].length;
   seeds = generateSeeds();
   generateHeights();
-  print(heightGrid);
   generateTerrain();
 
   home = new Home();
@@ -197,7 +201,7 @@ function generateHeights() {
       }
       distances.sort((a, b) => a - b);
       let distance = distances[0];
-      let scaledDistance = 1 - distance / 100;
+      let scaledDistance = 1 - distance / 300;
       if (scaledDistance < 0) {
         scaledDistance = 0;
       }
@@ -813,10 +817,36 @@ class Ant {
     let step = this.velocity.copy().mult(deltaTime * this.terrainSpeed);
     this.distanceSinceLastPheromone += step.mag();
 
+    let predictedPosition = this.predictNewPosition(step);
+    let heightDifference = this.getHeightDifference(predictedPosition);
+    let gradientFactor = this.getGradientFactor(heightDifference);
+    step.mult(gradientFactor);
+
     this.position = this.position.add(step);
     this.position = new p5.Vector(this.position.x, this.position.y);
 
     this.angle = Math.atan2(this.velocity.y, this.velocity.x) + Math.PI / 2;
+  }
+
+  predictNewPosition(step) {
+    return this.position.copy().add(step.copy());
+  }
+
+  getHeightDifference(predictedPosition) {
+    return (
+      getTerrainHeight(predictedPosition.x, predictedPosition.y) -
+      getTerrainHeight(this.position.x, this.position.y)
+    );
+  }
+
+  getGradientFactor(heightDifference) {
+    if (heightDifference > 0) {
+      return 0.5;
+    } else if (heightDifference < 0) {
+      return 1.5;
+    } else {
+      return 1;
+    }
   }
 
   releasePheromone() {
