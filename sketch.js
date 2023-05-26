@@ -119,6 +119,7 @@ var drawingStatus = [
 ];
 
 var useHeights = true;
+var terrainAffectsPheromones = true;
 
 function preload() {
   // collectSound = loadSound("assets/collect.mp3");
@@ -180,7 +181,8 @@ function setup() {
     "showVision",
     "showGraph",
     "drawingStatus",
-    "useHeights"
+    "useHeights",
+    "terrainAffectsPheromones"
   );
 }
 
@@ -200,7 +202,7 @@ function generateHeights() {
   for (let x = 0; x < terrainWidth; x++) {
     for (let y = 0; y < terrainHeight; y++) {
       let distances = [];
-      for (let i = 0; i < seedCount / 5; i++) {
+      for (let i = 0; i < seedCount / 3; i++) {
         let dx = Math.abs(x - seeds[i][0]);
         let dy = Math.abs(y - seeds[i][1]);
         distances.push(dx * dx + dy * dy);
@@ -769,10 +771,12 @@ class Ant {
     let right = 0;
     closePheromones.forEach((pheromone) => {
       let pheromoneValue = 1;
-      if (!useHeights) {
-        pheromoneValue = getTerrainSpeed(pheromone[0], pheromone[1]);
-      } else {
-        pheromoneValue = 1 / getTerrainHeight(pheromone[0], pheromone[1]);
+      if (terrainAffectsPheromones) {
+        if (!useHeights) {
+          pheromoneValue = getTerrainSpeed(pheromone[0], pheromone[1]);
+        } else {
+          pheromoneValue += 1 / getTerrainHeight(pheromone[0], pheromone[1]);
+        }
       }
       let angle = this.getAngleToPheromone(pheromone);
       if (angle > -visionAngle && angle <= -visionAngle / 3) {
@@ -780,9 +784,10 @@ class Ant {
       } else if (angle > -visionAngle / 3 && angle <= visionAngle / 3) {
         centre += pheromoneValue;
       } else if (angle > visionAngle / 3 && angle < visionAngle) {
-        right += pheromone;
+        right += pheromoneValue;
       }
     });
+    print(left, right, centre);
     if (left > centre && left > right) {
       return -1;
     } else if (right >= centre) {
@@ -858,9 +863,9 @@ class Ant {
 
   getGradientFactor(heightDifference) {
     if (heightDifference > 0) {
-      return 0.5;
+      return 0.7;
     } else if (heightDifference < 0) {
-      return 1.5;
+      return 1.3;
     } else {
       return 1;
     }
