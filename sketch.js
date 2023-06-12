@@ -9,9 +9,9 @@ const visionAngle = Math.PI / 3;
 var home = null;
 
 const foodCentres = 5;
-const foodPerCentre = 200;
-var foodCount = foodCentres * foodPerCentre;
-const foodSpread = 40;
+const avgfoodPerCentre = 200;
+var foodCount = 0;
+const avgfoodSpread = 3.5;
 var eatenFood = 0;
 const foodRange = 5;
 var ants;
@@ -247,13 +247,15 @@ function generateTerrain() {
 }
 
 function newFoodCentre() {
-  foodCount += foodPerCentre;
+  let n = Math.random() * 2 * avgfoodPerCentre;
+  foodCount += n;
   let centre = generateLocation();
   while (centre.dist(home.location) < 150) {
     centre = generateLocation();
   }
-  for (let k = 0; k < foodPerCentre; k++) {
-    food.add(new Food(centre));
+  let spread = Math.random() * 2 * avgfoodSpread + 3;
+  for (let k = 0; k < n; k++) {
+    food.add(new Food(centre, spread));
   }
 }
 
@@ -484,13 +486,14 @@ class Graph {
 }
 
 class Food {
-  constructor(centre) {
-    let directionFromCentre = p5.Vector.random2D();
-    let vectorFromCentre = directionFromCentre.setMag(
-      Math.random() * foodSpread
-    );
-    let centrePosition = centre.copy();
-    this.position = centrePosition.add(vectorFromCentre);
+  constructor(centre, spread) {
+    let u1 = Math.random();
+    let u2 = Math.random();
+    let z1 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2) * spread;
+    let z2 = Math.sqrt(-2 * Math.log(u1)) * Math.sin(2 * Math.PI * u2) * spread;
+
+    let vectorFromCentre = new p5.Vector(z1, z2);
+    this.position = centre.add(vectorFromCentre);
     this.keepFoodInBounds(centre, vectorFromCentre);
 
     this.eaten = false;
@@ -526,7 +529,7 @@ class Food {
     food.delete(this);
     // collectSound.play();
 
-    if (eatenFood % foodPerCentre == 0) {
+    if (eatenFood % avgfoodPerCentre == 0) {
       newFoodCentre();
     }
   }
