@@ -11,7 +11,7 @@ var home = null;
 const foodCentres = 5;
 const avgfoodPerCentre = 200;
 var foodCount = 0;
-const avgfoodSpread = 3.5;
+const avgfoodSpread = 10;
 var eatenFood = 0;
 const foodRange = 5;
 var ants;
@@ -253,7 +253,7 @@ function newFoodCentre() {
   while (centre.dist(home.location) < 150) {
     centre = generateLocation();
   }
-  let spread = Math.random() * 2 * avgfoodSpread + 3;
+  let spread = Math.random() * 2 * avgfoodSpread + 10;
   for (let k = 0; k < n; k++) {
     food.add(new Food(centre, spread));
   }
@@ -307,8 +307,8 @@ function draw() {
     }
   }
 
-  // toFoodPheromones.show();
-  // toHomePheromones.show();
+  //   toFoodPheromones.show();
+  //   toHomePheromones.show();
   noStroke();
 
   obstacles.forEach((obstacle) => {
@@ -493,8 +493,8 @@ class Food {
     let z2 = Math.sqrt(-2 * Math.log(u1)) * Math.sin(2 * Math.PI * u2) * spread;
 
     let vectorFromCentre = new p5.Vector(z1, z2);
-    this.position = centre.add(vectorFromCentre);
-    this.keepFoodInBounds(centre, vectorFromCentre);
+    this.position = centre.copy().add(vectorFromCentre);
+    this.keepFoodInBounds(centre.copy(), vectorFromCentre);
 
     this.eaten = false;
   }
@@ -790,7 +790,7 @@ class Ant {
         right += pheromoneValue;
       }
     });
-    print(left, right, centre);
+
     if (left > centre && left > right) {
       return -1;
     } else if (right >= centre) {
@@ -824,12 +824,6 @@ class Ant {
   }
 
   updatePosition(acceleration) {
-    this.terrainSpeed =
-      terrainSpeeds[
-        terrainGrid[Math.floor(this.position.x / cellSize)][
-          Math.floor(this.position.y / cellSize)
-        ]
-      ];
     this.velocity = this.velocity
       .add(acceleration.mult(deltaTime))
       .limit(this.maxSpeed);
@@ -842,6 +836,12 @@ class Ant {
       let gradientFactor = this.getGradientFactor(heightDifference);
       step.mult(gradientFactor);
     } else {
+      this.terrainSpeed =
+        terrainSpeeds[
+          terrainGrid[Math.floor(this.position.x / cellSize)][
+            Math.floor(this.position.y / cellSize)
+          ]
+        ];
       step.mult(this.terrainSpeed);
     }
 
