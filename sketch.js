@@ -11,7 +11,7 @@ var home = null;
 const foodCentres = 5;
 const avgfoodPerCentre = 200;
 var foodCount = 0;
-const avgfoodSpread = 10;
+const avgfoodSpread = 20;
 var eatenFood = 0;
 const foodRange = 5;
 var ants;
@@ -247,13 +247,20 @@ function generateTerrain() {
 }
 
 function newFoodCentre() {
-  let n = Math.random() * 2 * avgfoodPerCentre;
+  let u1 = Math.random();
+  let u2 = Math.random();
+  let z1 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  let z2 = Math.sqrt(-2 * Math.log(u1)) * Math.sin(2 * Math.PI * u2);
+
+  let n = z1 * 100 + avgfoodPerCentre;
   foodCount += n;
+
   let centre = generateLocation();
   while (centre.dist(home.location) < 150) {
     centre = generateLocation();
   }
-  let spread = Math.random() * 2 * avgfoodSpread + 10;
+
+  let spread = z2 * 10 + avgfoodSpread;
   for (let k = 0; k < n; k++) {
     food.add(new Food(centre, spread));
   }
