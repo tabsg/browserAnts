@@ -49,12 +49,33 @@ const terrainColours = [
   "rgb(76, 245, 183)",
   "rgb(16, 255, 203)",
 ];
+
+// const heightColours = [
+//   [71, 111, 0],
+//   [174, 251, 42],
+// ];
+
+const heightColours = [
+  [221, 255, 217],
+  [244, 192, 149],
+];
+
+const seedCount = 30;
+var seeds;
 const cellSize = 10;
 var terrainGrid = new Array(Math.ceil(width / cellSize))
   .fill()
   .map(() => new Array(Math.ceil(height / cellSize)).fill(0));
 var terrainWidth;
 var terrainHeight;
+
+var heightGrid = new Array(Math.ceil(width / cellSize))
+  .fill()
+  .map(() => new Array(Math.ceil(height / cellSize)).fill(0));
+
+var heightColoursGrid = new Array(Math.ceil(width / cellSize))
+  .fill()
+  .map(() => new Array(Math.ceil(height / cellSize)).fill(0));
 
 // GUI Variables
 var gui;
@@ -79,6 +100,11 @@ var desiredAntCountMin = 1;
 var desiredAntCountMax = 500;
 var desiredAntCountStep = 1;
 
+var pheromoneDecay = -4.5;
+var pheromoneDecayMin = -6;
+var pheromoneDecayMax = -2;
+var pheromoneDecayStep = 0.1;
+
 var seeCoverage = false;
 var hungry = true;
 var showGraph = true;
@@ -92,6 +118,9 @@ var drawingStatus = [
   veryFastTerrain,
 ];
 
+var useHeights = true;
+var terrainAffectsPheromones = true;
+
 function preload() {
   // collectSound = loadSound("assets/collect.mp3");
   // returnSound = loadSound("assets/return.mp3");
@@ -101,13 +130,14 @@ function setup() {
   var canvas = createCanvas(width + 2 * graphHeight, height + graphHeight);
   fill(223, 243, 228);
 
-  noObstacles = [];
+  currentTerrain = useHeights;
   terrainWidth = terrainGrid.length;
   terrainHeight = terrainGrid[0].length;
-  generateRandomTerrain();
+  seeds = generateSeeds();
+  generateHeights();
+  generateTerrain();
 
   home = new Home();
-  noObstacles[0] = home.location;
   noStroke();
 
   toHomePheromones = new QuadTree(
@@ -145,23 +175,52 @@ function setup() {
     "pheromoneDistance",
     "brushSize",
     "desiredAntCount",
+    "pheromoneDecay",
     "hungry",
     "seeCoverage",
     "showVision",
     "showGraph",
-    "drawingStatus"
+    "drawingStatus",
+    "useHeights",
+    "terrainAffectsPheromones"
   );
 }
 
-function generateRandomTerrain() {
-  seedCount = 30;
+function generateSeeds() {
   seeds = [];
   for (let i = 0; i < seedCount; i++) {
     let x = Math.round(Math.random() * (width / cellSize));
     let y = Math.round(Math.random() * (height / cellSize));
-    terrainGrid[x][y] = veryFastTerrain;
+    terrainGrid[x][y] = 1;
+    heightGrid[x][y] = 1;
     seeds.push([x, y]);
   }
+  return seeds;
+}
+
+function generateHeights() {
+  for (let x = 0; x < terrainWidth; x++) {
+    for (let y = 0; y < terrainHeight; y++) {
+      let distances = [];
+      for (let i = 0; i < seedCount / 3; i++) {
+        let dx = Math.abs(x - seeds[i][0]);
+        let dy = Math.abs(y - seeds[i][1]);
+        distances.push(dx * dx + dy * dy);
+      }
+      distances.sort((a, b) => a - b);
+      let distance = distances[0];
+      let scaledDistance = 1 - distance / 300;
+      if (scaledDistance < 0) {
+        scaledDistance = 0;
+      }
+      scaledDistance = Math.pow(scaledDistance, 2);
+      heightGrid[x][y] = scaledDistance;
+      heightColoursGrid[x][y] = getHeightColour(heightGrid[x][y]);
+    }
+  }
+}
+
+function generateTerrain() {
   for (let x = 0; x < terrainWidth; x++) {
     for (let y = 0; y < terrainHeight; y++) {
       let distances = [];
@@ -227,13 +286,23 @@ function getTerrainSpeed(x, y) {
   return terrainGrid[terrainX][terrainY];
 }
 
+function getTerrainHeight(x, y) {
+  let terrainX = Math.floor(x / cellSize);
+  let terrainY = Math.floor(y / cellSize);
+  return heightGrid[terrainX][terrainY];
+}
+
 function draw() {
   if (!seeCoverage) {
     background(108, 75, 94);
     fill(223, 243, 228);
     rectMode(CORNERS);
     rect(0, 0, width, height);
-    drawTerrain();
+    if (useHeights) {
+      drawHeights();
+    } else {
+      drawTerrain();
+    }
   }
 
   // toFoodPheromones.show();
@@ -295,6 +364,17 @@ function drawTerrain() {
   }
 }
 
+function drawHeights() {
+  rectMode(CORNER);
+  for (let i = 0; i < terrainWidth; i++) {
+    for (let j = 0; j < terrainHeight; j++) {
+      let col = heightColoursGrid[i][j];
+      fill(col);
+      rect(i * cellSize, j * cellSize, cellSize, cellSize);
+    }
+  }
+}
+
 class Obstacle {
   constructor(x, y, w, h) {
     this.x = x;
@@ -329,8 +409,8 @@ class Pheromone {
   }
 
   update() {
-    this.strength -= 0.01;
-    if (this.strength <= 0.02) {
+    this.strength -= Math.exp(pheromoneDecay);
+    if (this.strength <= 2 * Math.exp(pheromoneDecay)) {
       if (this.toFood) {
         toFoodPheromones.remove(this.position.copy());
       } else {
@@ -690,15 +770,24 @@ class Ant {
     let centre = 0;
     let right = 0;
     closePheromones.forEach((pheromone) => {
+      let pheromoneValue = 1;
+      if (terrainAffectsPheromones) {
+        if (!useHeights) {
+          pheromoneValue = getTerrainSpeed(pheromone[0], pheromone[1]);
+        } else {
+          pheromoneValue += 1 / getTerrainHeight(pheromone[0], pheromone[1]);
+        }
+      }
       let angle = this.getAngleToPheromone(pheromone);
       if (angle > -visionAngle && angle <= -visionAngle / 3) {
-        left += getTerrainSpeed(pheromone[0], pheromone[1]);
+        left += pheromoneValue;
       } else if (angle > -visionAngle / 3 && angle <= visionAngle / 3) {
-        centre += getTerrainSpeed(pheromone[0], pheromone[1]);
+        centre += pheromoneValue;
       } else if (angle > visionAngle / 3 && angle < visionAngle) {
-        right += getTerrainSpeed(pheromone[0], pheromone[1]);
+        right += pheromoneValue;
       }
     });
+    print(left, right, centre);
     if (left > centre && left > right) {
       return -1;
     } else if (right >= centre) {
@@ -742,13 +831,44 @@ class Ant {
       .add(acceleration.mult(deltaTime))
       .limit(this.maxSpeed);
 
-    let step = this.velocity.copy().mult(deltaTime * this.terrainSpeed);
+    let step = this.velocity.copy().mult(deltaTime);
+
+    if (useHeights) {
+      let predictedPosition = this.predictNewPosition(step);
+      let heightDifference = this.getHeightDifference(predictedPosition);
+      let gradientFactor = this.getGradientFactor(heightDifference);
+      step.mult(gradientFactor);
+    } else {
+      step.mult(this.terrainSpeed);
+    }
+
     this.distanceSinceLastPheromone += step.mag();
 
     this.position = this.position.add(step);
     this.position = new p5.Vector(this.position.x, this.position.y);
 
     this.angle = Math.atan2(this.velocity.y, this.velocity.x) + Math.PI / 2;
+  }
+
+  predictNewPosition(step) {
+    return this.position.copy().add(step.copy());
+  }
+
+  getHeightDifference(predictedPosition) {
+    return (
+      getTerrainHeight(predictedPosition.x, predictedPosition.y) -
+      getTerrainHeight(this.position.x, this.position.y)
+    );
+  }
+
+  getGradientFactor(heightDifference) {
+    if (heightDifference > 0) {
+      return 0.7;
+    } else if (heightDifference < 0) {
+      return 1.3;
+    } else {
+      return 1;
+    }
   }
 
   releasePheromone() {
@@ -1075,4 +1195,47 @@ function mouseDragged() {
       }
     }
   }
+}
+
+function getHeightColour(height) {
+  return mixColours(heightColours[0], heightColours[1], height);
+}
+
+function mixColours(colour1, colour2, ratio) {
+  colour1 = InvertSrgbCompanding(colour1);
+  colour2 = InvertSrgbCompanding(colour2);
+
+  let mixedColour = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    mixedColour[i] = colour1[i] * (1 - ratio) + colour2[i] * ratio;
+  }
+
+  mixedColour = srgbCompanding(mixedColour);
+  return mixedColour;
+}
+
+function InvertSrgbCompanding(colour) {
+  colour.forEach((value) => {
+    value /= 255;
+    if (value > 0.04045) {
+      value = Math.pow((value + 0.055) / 1.055, 2.4);
+    } else {
+      value /= 12.92;
+    }
+    value *= 255;
+  });
+  return colour;
+}
+
+function srgbCompanding(colour) {
+  colour.forEach((value) => {
+    value /= 255;
+    if (value > 0.0031308) {
+      value = 1.055 * Math.pow(value, 1 / 2.4) - 0.055;
+    } else {
+      value *= 12.92;
+    }
+    value *= 255;
+  });
+  return colour;
 }
