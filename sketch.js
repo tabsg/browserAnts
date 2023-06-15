@@ -209,11 +209,11 @@ function generateHeights() {
       }
       distances.sort((a, b) => a - b);
       let distance = distances[0];
-      let scaledDistance = 1 - distance / 300;
-      if (scaledDistance < 0) {
+      if (Math.abs(distance) < 300) {
+        scaledDistance = Math.pow(Math.cos((Math.PI * distance) / 600), 2);
+      } else {
         scaledDistance = 0;
       }
-      scaledDistance = Math.pow(scaledDistance, 2);
       heightGrid[x][y] = scaledDistance;
       heightColoursGrid[x][y] = getHeightColour(heightGrid[x][y]);
     }
