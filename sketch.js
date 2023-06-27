@@ -80,6 +80,11 @@ var heightColoursGrid = new Array(Math.ceil(width / cellSize))
 // GUI Variables
 var gui;
 
+var wanderStrength = 0.35;
+var wanderStrengthMin = 0;
+var wanderStrengthMax = 1;
+var wanderStrengthStep = 0.05;
+
 var visibility = 100;
 var visibilityMin = 0;
 var visibilityMax = 200;
@@ -119,7 +124,7 @@ var drawingStatus = [
 ];
 
 var useHeights = true;
-var terrainAffectsPheromones = true;
+var terrainAffectsPheromones = false;
 
 function preload() {
   // collectSound = loadSound("assets/collect.mp3");
@@ -171,6 +176,7 @@ function setup() {
 
   gui = createGui("Settings");
   gui.addGlobals(
+    "wanderStrength",
     "visibility",
     "pheromoneDistance",
     "brushSize",
@@ -545,7 +551,6 @@ class Ant {
   constructor(x, y) {
     this.maxSpeed = 3;
     this.steerStrength = 0.5;
-    this.wanderStrength = 0.35;
 
     this.angle = 0;
     this.position = new p5.Vector(x, y);
@@ -671,7 +676,7 @@ class Ant {
 
   wander() {
     this.desiredDirection = p5.Vector.random2D()
-      .mult(this.wanderStrength)
+      .mult(wanderStrength)
       .add(this.desiredDirection)
       .normalize();
   }
